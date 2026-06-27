@@ -209,10 +209,17 @@ function ESP.Init(S, ParentGUI)
 						ch.B.Visible = false
 					end
 
-					if S.Name then
-						ch.T.Text = p.Name .. "  [" .. math.floor(dist) .. "m]"
+					if S.Name or S.DistView then
+						local distStr = S.DistView and ("[" .. math.floor(dist) .. "m]") or ""
+						if S.Name and S.DistView then
+							ch.T.Text = p.Name .. "  " .. distStr
+						elseif S.Name then
+							ch.T.Text = p.Name
+						else
+							ch.T.Text = distStr
+						end
 						ch.T.Size = UDim2.new(0, w2 + 40, 0, 14)
-						ch.T.Position = UDim2.new(0, bx - 20, 0, by - 16)
+						ch.T.Position = UDim2.new(0, bx - 20, 0, by - (S.Name and 16 or 8))
 						ch.T.TextColor3 = clr
 						ch.T.Visible = true
 					else

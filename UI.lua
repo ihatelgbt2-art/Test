@@ -381,10 +381,22 @@ function UI.Init(S, ParentGUI)
 		Size = UDim2.new(1, 20, 0, 14),
 		Position = UDim2.new(0.5, -46, 0, -18),
 		BackgroundTransparency = 1,
-		Text = "Enemy  ·  15m",
+		Text = "Enemy",
 		Font = Enum.Font.GothamBold,
 		TextSize = 10,
 		TextColor3 = ACC,
+		ZIndex = 7,
+		Parent = M_Box,
+	})
+
+	local M_Dist = C("TextLabel", {
+		Size = UDim2.new(1, 20, 0, 12),
+		Position = UDim2.new(0.5, -46, 0, -6),
+		BackgroundTransparency = 1,
+		Text = "[15m]",
+		Font = Enum.Font.GothamMedium,
+		TextSize = 9,
+		TextColor3 = Color3.fromRGB(160, 160, 170),
 		ZIndex = 7,
 		Parent = M_Box,
 	})
@@ -488,7 +500,7 @@ function UI.Init(S, ParentGUI)
 
 	local function UpdPreview()
 		local showBox = S.Box
-		M_Box.Visible = showBox or S.Name or S.Health or S.HealthText or S.Weapon or S.Trace or S.Skel or S.Chams
+		M_Box.Visible = showBox or S.Name or S.DistView or S.Health or S.HealthText or S.Weapon or S.Trace or S.Skel or S.Chams
 		M_Cham.Visible = S.Chams
 		if S.Chams and S.ChamsRainbow then
 			M_Cham.BackgroundColor3 = Color3.fromHSV((tick() * 0.45) % 1, 0.9, 1)
@@ -496,6 +508,8 @@ function UI.Init(S, ParentGUI)
 			M_Cham.BackgroundColor3 = ACC
 		end
 		M_Nm.Visible = S.Name
+		M_Dist.Visible = S.DistView
+		M_Nm.Position = UDim2.new(0.5, -46, 0, S.DistView and -22 or -14)
 		M_Wpn.Visible = S.Weapon
 		M_Tr.Visible = S.Trace
 		M_HB.Visible = S.Health
@@ -627,6 +641,8 @@ function UI.Init(S, ParentGUI)
 
 		local oldWrap = ActivePageWrap
 		local oldBtn = ActiveTabBtn
+		local outInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+		local inInfo = TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
 		if oldBtn then StyleTab(oldBtn, false) end
 		StyleTab(btn, true)
@@ -635,31 +651,42 @@ function UI.Init(S, ParentGUI)
 			ApplyLayout(showPreview, true)
 		end
 
-		if oldWrap then
-			TweenPlay(oldWrap, TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+		ActiveTabBtn = btn
+		ActivePageWrap = pageWrap
+
+		if oldWrap and oldWrap ~= pageWrap then
+			local oldScale = oldWrap:FindFirstChild("PageScale")
+			TweenPlay(oldWrap, outInfo, {
 				GroupTransparency = 1,
-				Position = UDim2.new(0, -10, 0, 0),
+				Position = UDim2.new(0, -22, 0, 0),
 			})
-			task.delay(0.16, function()
+			if oldScale then
+				TweenPlay(oldScale, outInfo, { Scale = 0.94 })
+			end
+			task.delay(0.2, function()
 				if oldWrap ~= ActivePageWrap then
 					oldWrap.Visible = false
+					oldWrap.Position = UDim2.new(0, 0, 0, 0)
+					if oldScale then oldScale.Scale = 1 end
 				end
 			end)
 		end
 
 		pageWrap.Visible = true
 		pageWrap.GroupTransparency = 1
-		pageWrap.Position = UDim2.new(0, 10, 0, 0)
-		TweenPlay(pageWrap, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		pageWrap.Position = UDim2.new(0, 22, 0, 0)
+		local newScale = pageWrap:FindFirstChild("PageScale")
+		if newScale then newScale.Scale = 0.94 end
+		TweenPlay(pageWrap, inInfo, {
 			GroupTransparency = 0,
 			Position = UDim2.new(0, 0, 0, 0),
 		})
-
-		ActiveTabBtn = btn
-		ActivePageWrap = pageWrap
+		if newScale then
+			TweenPlay(newScale, inInfo, { Scale = 1 })
+		end
 	end
 
-	local function MakeTab(name, default, showPreview)
+	local function MakeTab(name, default, showPreview, layoutOrder)
 		local B = C("TextButton", {
 			Size = UDim2.new(1, 0, 0, 34),
 			BackgroundColor3 = default and ACC_SOFT or Color3.fromRGB(18, 18, 22),
@@ -670,7 +697,7 @@ function UI.Init(S, ParentGUI)
 			TextSize = 11,
 			AutoButtonColor = false,
 			BorderSizePixel = 0,
-			LayoutOrder = default and 1 or 2,
+			LayoutOrder = layoutOrder or 1,
 			ZIndex = 5,
 			Parent = SidePad,
 		})
@@ -694,6 +721,7 @@ function UI.Init(S, ParentGUI)
 			ZIndex = 4,
 			Parent = Content,
 		})
+		C("UIScale", { Name = "PageScale", Scale = 1, Parent = Wrap })
 
 		local P = C("ScrollingFrame", {
 			Size = UDim2.new(1, 0, 1, 0),
@@ -892,7 +920,14 @@ function UI.Init(S, ParentGUI)
 		end
 	end
 
-	local function MakeSlider(page, label, key, min, max, order)
+	local function MakeSlider(page, label, key, min, max, order, opts)
+		opts = opts or {}
+		local suffix = opts.suffix or "m"
+		local fmt = opts.fmt or function(v)
+			return tostring(v) .. suffix
+		end
+		local step = opts.step or 1
+
 		local Row = C("Frame", {
 			Size = UDim2.new(1, 0, 0, 52),
 			BackgroundColor3 = Color3.fromRGB(17, 17, 21),
@@ -905,10 +940,10 @@ function UI.Init(S, ParentGUI)
 		C("UIStroke", { Color = Color3.fromRGB(32, 32, 40), Thickness = 1, Transparency = 0.5, Parent = Row })
 
 		local ValLbl = C("TextLabel", {
-			Size = UDim2.new(0, 56, 0, 14),
-			Position = UDim2.new(1, -64, 0, 8),
+			Size = UDim2.new(0, 64, 0, 14),
+			Position = UDim2.new(1, -72, 0, 8),
 			BackgroundTransparency = 1,
-			Text = tostring(S[key]) .. "m",
+			Text = fmt(S[key]),
 			Font = Enum.Font.GothamBold,
 			TextSize = 10,
 			TextColor3 = ACC,
@@ -966,11 +1001,18 @@ function UI.Init(S, ParentGUI)
 
 		local function setValue(raw)
 			local pct = math.clamp(raw, 0, 1)
-			local val = math.floor(min + (max - min) * pct + 0.5)
+			local val = min + (max - min) * pct
+			if step >= 1 then
+				val = math.floor(val / step + 0.5) * step
+			else
+				val = math.floor(val * 100 + 0.5) / 100
+			end
+			val = math.clamp(val, min, max)
 			S[key] = val
-			ValLbl.Text = val .. "m"
-			Fill.Size = UDim2.new(pct, 0, 1, 0)
-			Knob.Position = UDim2.new(pct, 0, 0.5, 0)
+			ValLbl.Text = fmt(val)
+			local p = (val - min) / (max - min)
+			Fill.Size = UDim2.new(p, 0, 1, 0)
+			Knob.Position = UDim2.new(p, 0, 0.5, 0)
 		end
 
 		local function fromInput(x)
@@ -997,27 +1039,53 @@ function UI.Init(S, ParentGUI)
 		end)
 	end
 
-	local T1 = MakeTab("Visuals", true, true)
-	local T2 = MakeTab("Settings", false, false)
+	local T1 = MakeTab("Visuals", true, true, 1)
+	local T3 = MakeTab("Aim", false, false, 2)
+	local T2 = MakeTab("Settings", false, false, 3)
 
 	MakeSection(T1, "CORE", 1)
 	MakeTog(T1, "Master ESP", "ESP", 2)
-	MakeSlider(T1, "Distance Limit", "MaxDist", 50, 1500, 3)
-	MakeSection(T1, "OVERLAYS", 4)
-	MakeTog(T1, "Bounding Boxes", "Box", 5)
+	MakeSection(T1, "DISTANCE", 3)
+	MakeTog(T1, "Show Distance", "DistView", 4)
+	MakeSlider(T1, "Distance Limit", "MaxDist", 50, 1500, 5)
+	MakeSection(T1, "OVERLAYS", 6)
+	MakeTog(T1, "Bounding Boxes", "Box", 7)
 	MakeChoice(T1, "Box Type", "BoxType", {
 		{ label = "Full", value = "Full" },
 		{ label = "Corner", value = "Corner" },
-	}, 6)
-	MakeTog(T1, "Player Names", "Name", 7)
-	MakeTog(T1, "Health Bars", "Health", 8)
-	MakeTog(T1, "Health Text", "HealthText", 9)
-	MakeTog(T1, "Weapon ESP", "Weapon", 10)
-	MakeSection(T1, "ADVANCED", 11)
-	MakeTog(T1, "Skeleton", "Skel", 12)
-	MakeTog(T1, "Tracers", "Trace", 13)
-	MakeTog(T1, "Chams Fill", "Chams", 14)
-	MakeTog(T1, "Chams Rainbow", "ChamsRainbow", 15)
+	}, 8)
+	MakeTog(T1, "Player Names", "Name", 9)
+	MakeTog(T1, "Health Bars", "Health", 10)
+	MakeTog(T1, "Health Text", "HealthText", 11)
+	MakeTog(T1, "Weapon ESP", "Weapon", 12)
+	MakeSection(T1, "ADVANCED", 13)
+	MakeTog(T1, "Skeleton", "Skel", 14)
+	MakeTog(T1, "Tracers", "Trace", 15)
+	MakeTog(T1, "Chams Fill", "Chams", 16)
+	MakeTog(T1, "Chams Rainbow", "ChamsRainbow", 17)
+
+	MakeSection(T3, "AIMBOT", 1)
+	MakeTog(T3, "Aimbot (RMB)", "Aimbot", 2)
+	MakeTog(T3, "Silent Aim", "Silent", 3)
+	MakeTog(T3, "Triggerbot", "Trigger", 4)
+	MakeTog(T3, "Backtrack", "Backtrack", 5)
+	MakeSlider(T3, "Backtrack Delay", "BacktrackMs", 50, 500, 6, { suffix = "ms", step = 10 })
+	MakeSection(T3, "TARGETING", 7)
+	MakeTog(T3, "Visible Check", "VisibleCheck", 8)
+	MakeChoice(T3, "Target Priority", "TargetMode", {
+		{ label = "FOV", value = "FOV" },
+		{ label = "Distance", value = "Distance" },
+		{ label = "Health", value = "Health" },
+	}, 9)
+	MakeSection(T3, "FOV & SMOOTH", 10)
+	MakeTog(T3, "Show FOV Circle", "ShowFOV", 11)
+	MakeSlider(T3, "FOV Size", "FOV", 20, 300, 12, { suffix = "px", step = 5 })
+	MakeSlider(T3, "Smoothing", "Smooth", 0.05, 0.95, 13, {
+		suffix = "",
+		step = 0.05,
+		fmt = function(v) return math.floor(v * 100) .. "%" end,
+	})
+	MakeTog(T3, "Aim Curve + Jitter", "AimCurve", 14)
 
 	MakeSection(T2, "FILTERS", 1)
 	MakeTog(T2, "Team Colors", "RealTeamColor", 2)
