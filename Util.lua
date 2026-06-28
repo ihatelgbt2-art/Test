@@ -53,49 +53,25 @@ function Util.getPartPosition(part)
 	return nil
 end
 
-function Util.getPartVelocity(part, char)
-	if part and part:IsA("BasePart") then
-		local ok, vel = pcall(function()
-			return part.AssemblyLinearVelocity
-		end)
-		if ok and vel then
-			return vel
-		end
-	end
-	if char then
-		local hrp = Util.resolveBodyPart(char, "HumanoidRootPart")
-		if hrp then
-			local ok, vel = pcall(function()
-				return hrp.AssemblyLinearVelocity
-			end)
-			if ok and vel then
-				return vel
-			end
-		end
-	end
-	return Vector3.zero
-end
-
-function Util.getNetworkLead(extra)
-	extra = extra or 0
-	local ping = 0.05
-	pcall(function()
-		local item = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]
-		if item then
-			ping = math.clamp(item:GetValue() / 1000, 0.02, 0.35)
-		end
-	end)
-	return ping + extra
-end
-
-function Util.predictAimPoint(part, char, leadTime)
-	local pos = Util.getPartPosition(part)
-	if not pos then
+function Util.getFirePosition(char, part)
+	if not part then
 		return nil
 	end
-	leadTime = leadTime or 0.08
-	local vel = Util.getPartVelocity(part, char)
-	return pos + vel * leadTime
+	if char and string.sub(part.Name, 1, #VG_PREFIX) == VG_PREFIX then
+		local slot = string.sub(part.Name, #VG_PREFIX + 1)
+		local body = Util.resolveBodyPart(char, slot)
+		if body then
+			return body.Position
+		end
+	end
+	if part:IsA("BasePart") and part.Parent == char then
+		return part.Position
+	end
+	if char then
+		return Util.getPartPosition(Util.resolveBodyPart(char, "Head"))
+			or Util.getPartPosition(Util.resolveBodyPart(char, "HumanoidRootPart"))
+	end
+	return Util.getPartPosition(part)
 end
 
 function Util.isDecorNpc(model)
@@ -130,6 +106,12 @@ function Util.isAimableCharacter(model)
 		return false
 	end
 	if hum.Health <= 0 then
+		return false
+	end
+	local ok, state = pcall(function()
+		return hum:GetState()
+	end)
+	if ok and state == Enum.HumanoidStateType.Dead then
 		return false
 	end
 	for _, name in ipairs({ "Head", "UpperTorso", "Torso", "HumanoidRootPart" }) do
@@ -173,43 +155,28 @@ function Util.refreshBotList(list, enabled, LP)
 	end
 end
 
-function Util.fireAtWorld(VIM, Cam, worldPos)
-	local vp, onScreen = Cam:WorldToViewportPoint(worldPos)
-	local x, y = vp.X, vp.Y
-	if not onScreen then
-		local center = Cam.ViewportSize / 2
-		x, y = center.X, center.Y
-	end
-	VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
+function Util.fireCrosshair(VIM, Cam)
+	local cx = Cam.ViewportSize.X / 2
+	local cy = Cam.ViewportSize.Y / 2
+	VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 0)
 	task.defer(function()
-		VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
+		VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 0)
 	end)
 end
 
-function Util.performSilentShot(RS, Cam, VIM, targetPos, aimFrames, opts)
-	opts = opts or {}
+function Util.performSilentShot(RS, Cam, VIM, targetPos, aimFrames)
+	if not targetPos then
+		return
+	end
 	aimFrames = aimFrames or 2
 	local saved = Cam.CFrame
-	local getPos = opts.getTarget
-
+	Cam.CFrame = CFrame.new(saved.Position, targetPos)
 	for _ = 1, aimFrames do
-		local pos = getPos and getPos() or targetPos
-		if pos then
-			Cam.CFrame = CFrame.new(Cam.CFrame.Position, pos)
-		end
 		RS.RenderStepped:Wait()
 	end
-
-	local firePos = getPos and getPos() or targetPos
-	if firePos then
-		Util.fireAtWorld(VIM, Cam, firePos)
-	end
-
+	Util.fireCrosshair(VIM, Cam)
 	RS.RenderStepped:Wait()
-
-	if not opts.noRestore then
-		Cam.CFrame = saved
-	end
+	Cam.CFrame = saved
 end
 
 return Util

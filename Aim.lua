@@ -21,8 +21,12 @@ function Aim.Init(S, ParentGUI, TF, Util)
 	local triggerLock = nil
 	local triggerLockUntil = 0
 	local silentBusy = false
+	local pendingSilent = nil
 
 	local AIM_PARTS = { "Head", "UpperTorso", "Torso", "HumanoidRootPart", "LowerTorso" }
+	local fovLimit = function()
+		return math.max(S.FOV or 80, 1)
+	end
 
 	local function C(class, props)
 		local i = Instance.new(class)
@@ -194,8 +198,8 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		end
 	end
 
-	local function screenDist(part)
-		local pos3 = Util.getPartPosition(part)
+	local function screenDist(part, char)
+		local pos3 = Util.getFirePosition(char, part) or Util.getPartPosition(part)
 		if not pos3 then
 			return math.huge
 		end
@@ -231,7 +235,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 			for _, n in ipairs(AIM_PARTS) do
 				local p = Util.resolveAimPart(char, n)
 				if p then
-					local d = screenDist(p)
+					local d = screenDist(p, char)
 					if d < bestD then
 						bestD = d
 						best = p
@@ -259,40 +263,11 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		return true
 	end
 
-	local function findCrosshairEntry()
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		params.FilterDescendantsInstances = LP.Character and { LP.Character } or {}
-		local ray = Cam:ViewportPointToRay(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
-		local hit = workspace:Raycast(ray.Origin, ray.Direction * (S.MaxDist or 500), params)
-		if not hit or not hit.Instance then
-			return nil
-		end
-		local model = hit.Instance:FindFirstAncestorOfClass("Model")
-		if not model or not isAliveChar(model) then
-			return nil
-		end
-		if LP.Character and model == LP.Character then
-			return nil
-		end
-		local plr = Players:GetPlayerFromCharacter(model)
-		if plr then
-			if not isEnemyPlayer(plr) then
-				return nil
-			end
-			return { char = model, plr = plr }
-		end
-		if S.AimBots then
-			return { char = model, plr = nil }
-		end
-		return nil
-	end
-
 	local function isVisible(part, char)
 		if not S.VisibleCheck then
 			return true
 		end
-		local partPos = Util.getPartPosition(part)
+		local partPos = Util.getFirePosition(char, part)
 		if not partPos then
 			return false
 		end
@@ -324,7 +299,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		return list
 	end
 
-	local function scoreTarget(entry)
+	local function scoreTarget(entry, maxFov)
 		local char = entry.char
 		if not isAliveChar(char) then
 			return nil
@@ -334,15 +309,15 @@ function Aim.Init(S, ParentGUI, TF, Util)
 			return nil
 		end
 
-		local dist2d = screenDist(part)
-		if dist2d > math.max(S.FOV, 1) then
+		local dist2d = screenDist(part, char)
+		if dist2d > maxFov then
 			return nil
 		end
 		if not isVisible(part, char) then
 			return nil
 		end
 
-		local partPos = Util.getPartPosition(part)
+		local partPos = Util.getFirePosition(char, part)
 		if not partPos then
 			return nil
 		end
@@ -364,18 +339,10 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		return { part = part, char = char, plr = entry.plr, score = score }
 	end
 
-	local function getBestTarget()
-		local crossEntry = findCrosshairEntry()
-		if crossEntry then
-			local crossCand = scoreTarget(crossEntry)
-			if crossCand then
-				return crossCand
-			end
-		end
-
+	local function pickBestTarget(maxFov)
 		local best, bestScore = nil, math.huge
 		for _, entry in ipairs(collectTargets()) do
-			local cand = scoreTarget(entry)
+			local cand = scoreTarget(entry, maxFov)
 			if cand and cand.score < bestScore then
 				bestScore = cand.score
 				best = cand
@@ -385,17 +352,18 @@ function Aim.Init(S, ParentGUI, TF, Util)
 	end
 
 	local function getStableTriggerTarget()
+		local limit = fovLimit()
 		if triggerLock and tick() < triggerLockUntil then
 			local part = triggerLock.part
 			local char = triggerLock.char
 			if part and part.Parent and char and isAliveChar(char) and isVisible(part, char) then
-				if screenDist(part) <= math.max(S.FOV, 1) * 1.25 then
+				if screenDist(part, char) <= limit then
 					return triggerLock
 				end
 			end
 		end
-		triggerLock = getBestTarget()
-		triggerLockUntil = tick() + 0.55
+		triggerLock = pickBestTarget(limit)
+		triggerLockUntil = tick() + 0.4
 		return triggerLock
 	end
 
@@ -409,26 +377,36 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		Cam.CFrame = Cam.CFrame:Lerp(goal, alpha)
 	end
 
-	local function runSilentShot(tgt)
-		if silentBusy or not tgt or not tgt.part then
+	local function doSilentShot(tgt)
+		if silentBusy or pendingSilent or not tgt or not tgt.part or not tgt.char then
+			return false
+		end
+		if not isAliveChar(tgt.char) then
+			return false
+		end
+		local pos = Util.getFirePosition(tgt.char, tgt.part)
+		if not pos then
+			return false
+		end
+		pendingSilent = { tgt = tgt, pos = pos }
+		return true
+	end
+
+	local function processPendingSilent()
+		if not pendingSilent or silentBusy then
 			return
 		end
+		local job = pendingSilent
+		pendingSilent = nil
 		silentBusy = true
 		task.spawn(function()
-			local part = tgt.part
-			local char = tgt.char
-			local hum = char and char:FindFirstChildOfClass("Humanoid")
-			local lead = Util.getNetworkLead(0.05)
-			local function getTarget()
-				return Util.predictAimPoint(part, char, lead)
-			end
-			local pos = getTarget()
-			if pos then
-				Util.performSilentShot(RS, Cam, VIM, pos, 2, { getTarget = getTarget })
-				S.LastShotAt = tick()
-				if hum then
-					S.LastShotHum = hum
-				end
+			pcall(function()
+				Util.performSilentShot(RS, Cam, VIM, job.pos, 2)
+			end)
+			S.LastShotAt = tick()
+			local hum = job.tgt.char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				S.LastShotHum = hum
 			end
 			silentBusy = false
 		end)
@@ -442,28 +420,22 @@ function Aim.Init(S, ParentGUI, TF, Util)
 			return
 		end
 		local baseDelay = math.max(S.TriggerDelay or 1, 1) / 1000
-		local jitter = baseDelay * (math.random() * 0.2 - 0.1)
-		if tick() - lastTrigger < baseDelay + jitter then
+		if tick() - lastTrigger < baseDelay then
 			return
 		end
 
 		local tgt = getStableTriggerTarget()
-		if not tgt or not tgt.part then
+		if not tgt or not tgt.part or not tgt.char or not isAliveChar(tgt.char) then
 			return
 		end
-
-		local lead = Util.getNetworkLead(baseDelay + 0.03)
-		local targetPos = Util.predictAimPoint(tgt.part, tgt.char, lead)
-		if not targetPos then
+		if screenDist(tgt.part, tgt.char) > fovLimit() then
 			return
 		end
 
 		lastTrigger = tick()
 		S.LastShotAt = tick()
-		if tgt.char then
-			S.LastShotHum = tgt.char:FindFirstChildOfClass("Humanoid")
-		end
-		Util.fireAtWorld(VIM, Cam, targetPos)
+		S.LastShotHum = tgt.char:FindFirstChildOfClass("Humanoid")
+		Util.fireCrosshair(VIM, Cam)
 	end
 
 	pcall(function()
@@ -479,19 +451,17 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
 			return Enum.ContextActionResult.Pass
 		end
-		local tgt = getBestTarget()
-		if tgt then
-			runSilentShot(tgt)
+		local tgt = pickBestTarget(fovLimit())
+		if tgt and doSilentShot(tgt) then
 			return Enum.ContextActionResult.Sink
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseButton1)
 
-	UIS.InputBegan:Connect(function(input, processed)
+	UIS.InputBegan:Connect(function(input)
 		if S.MenuOpen or S.MasterRage then
 			return
 		end
-
 		local key = getTriggerKey()
 		if S.Trigger and S.TriggerMode == "Toggle" and key and input.KeyCode == key then
 			if tick() - lastTogglePress < 0.2 then
@@ -505,6 +475,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 	RS.RenderStepped:Connect(function()
 		updFOV()
 		updTriggerHud()
+		processPendingSilent()
 
 		if not S.Trigger then
 			triggerToggled = false
@@ -519,10 +490,9 @@ function Aim.Init(S, ParentGUI, TF, Util)
 
 		if S.Aimbot and not S.Silent and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
 			pcall(function()
-				local tgt = getBestTarget()
-				if tgt and tgt.part then
-					local lead = Util.getNetworkLead(0.02)
-					local pos = Util.predictAimPoint(tgt.part, tgt.char, lead)
+				local tgt = pickBestTarget(fovLimit())
+				if tgt and tgt.part and tgt.char then
+					local pos = Util.getFirePosition(tgt.char, tgt.part)
 					if pos then
 						aimCamera(pos)
 					end
