@@ -380,14 +380,31 @@ function Rage.Init(S, ParentGUI, TF, Util)
 		return rageLock
 	end
 
-	local function rotateCharacterTo(targetPos)
-		local char = LP.Character
-		local hrp = char and char:FindFirstChild("HumanoidRootPart")
-		if not hrp then
+	local function aimCameraAt(targetPos, smooth)
+		local goal = CFrame.new(Cam.CFrame.Position, targetPos)
+		if smooth then
+			local alpha = math.clamp((1 - (S.RageTrackSmooth or 0.35)) * 0.28, 0.06, 0.55)
+			Cam.CFrame = Cam.CFrame:Lerp(goal, alpha)
+		else
+			Cam.CFrame = goal
+		end
+	end
+
+	local function applyRageTrack()
+		if not rageArmed() or S.RageAimMode ~= "Track" then
 			return
 		end
-		local pos = hrp.Position
-		hrp.CFrame = CFrame.new(pos, Vector3.new(targetPos.X, pos.Y, targetPos.Z))
+		if tick() < rageShootingUntil then
+			return
+		end
+		local tgt = getStableRageTarget()
+		if not tgt or not tgt.part or not tgt.char then
+			return
+		end
+		local pos = Util.getFirePosition(tgt.char, tgt.part)
+		if pos then
+			aimCameraAt(pos, true)
+		end
 	end
 
 	local function fireClick()
@@ -429,12 +446,17 @@ function Rage.Init(S, ParentGUI, TF, Util)
 		S.LastShotHum = tgt.char:FindFirstChildOfClass("Humanoid")
 
 		rageShootingUntil = tick() + 0.12
+		local mode = S.RageAimMode or "Silent"
 		task.spawn(function()
-			if S.RageSilent ~= false then
+			if mode == "Silent" then
 				Util.performSilentShot(RS, Cam, VIM, targetPos, 2)
+			elseif mode == "Track" then
+				aimCameraAt(targetPos, false)
+				RS.RenderStepped:Wait()
+				Util.fireCrosshair(VIM, Cam)
 			else
 				local saved = Cam.CFrame
-				Cam.CFrame = CFrame.new(saved.Position, targetPos)
+				aimCameraAt(targetPos, false)
 				RS.RenderStepped:Wait()
 				Util.fireCrosshair(VIM, Cam)
 				Cam.CFrame = saved
@@ -520,6 +542,8 @@ function Rage.Init(S, ParentGUI, TF, Util)
 		else
 			restoreAntiAim()
 		end
+
+		applyRageTrack()
 
 		if S.MenuOpen then
 			return

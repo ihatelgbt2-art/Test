@@ -2,7 +2,7 @@
 
 local UI = {}
 
-function UI.Init(S, ParentGUI, ConfigModule, TF)
+function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule)
 	local UIS = game:GetService("UserInputService")
 	local TS = game:GetService("TweenService")
 
@@ -1519,9 +1519,11 @@ function UI.Init(S, ParentGUI, ConfigModule, TF)
 	local T1 = MakeTab("Visuals", true, true, 1)
 	local T3 = MakeTab("Legit", false, false, 2)
 	local TR = MakeTab("Rage", false, false, 3)
-	local T2 = MakeTab("Settings", false, false, 4)
-	local TM = MakeTab("Misc", false, false, 5)
-	local T4 = MakeTab("Config", false, false, 6)
+	local TAnim = MakeTab("Anim", false, false, 4)
+	local TWorld = MakeTab("World", false, false, 5)
+	local T2 = MakeTab("Settings", false, false, 6)
+	local TM = MakeTab("Misc", false, false, 7)
+	local T4 = MakeTab("Config", false, false, 8)
 
 	local VCore = MakeCard(T1, "ESP", nil, 1)
 	MakeTog(VCore, "Master ESP", "ESP", 1, { flat = true })
@@ -1613,20 +1615,84 @@ function UI.Init(S, ParentGUI, ConfigModule, TF)
 	MakeSlider(RBot, "Rage Delay", "RageDelay", 1, 500, 4, { suffix = "ms", step = 1 })
 	MakeTog(RBot, "Rage Status HUD", "ShowRageHud", 5, { flat = true })
 	MakeTog(RBot, "Minimal Rage HUD", "RageHudMinimal", 6, { flat = true })
-	MakeTog(RBot, "Silent Aim (camera snap)", "RageSilent", 7, { flat = true })
+	MakeChoice(RBot, "Aim Mode", "RageAimMode", {
+		{ label = "Silent", value = "Silent" },
+		{ label = "Track", value = "Track" },
+		{ label = "Snap", value = "Snap" },
+	}, 7)
+	MakeSlider(RBot, "Track Smooth", "RageTrackSmooth", 0.05, 0.95, 8, {
+		suffix = "",
+		step = 0.05,
+		fmt = function(v) return math.floor(v * 100) .. "%" end,
+	})
+	MakeHint(RBot, "Silent = niewidoczny flick. Track = lock kamery na cel. Snap = celuj i strzelaj.", 9)
 
 	local RTarget = MakeCard(TR, "TARGETING", nil, 4)
 	MakeTog(RTarget, "Exclude Teammates & Friends", "ExcludeTeam", 1, { flat = true })
 	MakeTog(RTarget, "Visible Check", "RageVisibleCheck", 2, { flat = true })
-	MakeTog(RTarget, "Crosshair Fallback", "RageCrosshair", 3, { flat = true })
-	MakeTog(RTarget, "Target Bots", "RageBots", 4, { flat = true })
+	MakeTog(RTarget, "Target Bots", "RageBots", 3, { flat = true })
 	MakeChoice(RTarget, "Hit Part", "RageHitPart", {
 		{ label = "Head", value = "Head" },
 		{ label = "Torso", value = "Torso" },
 		{ label = "Random", value = "Random" },
 		{ label = "Closest", value = "Closest" },
-	}, 5)
-	MakeSlider(RTarget, "Max Distance", "RageMaxDist", 50, 1500, 6, { suffix = "m", step = 25 })
+	}, 4)
+	MakeSlider(RTarget, "Max Distance", "RageMaxDist", 50, 1500, 5, { suffix = "m", step = 25 })
+
+	local WEnv = MakeCard(TWorld, "ENVIRONMENT", "Zmiany tylko u Ciebie (lokalne).", 1)
+	MakeTog(WEnv, "FullBright", "FullBright", 1, { flat = true })
+	MakeTog(WEnv, "No Fog", "NoFog", 2, { flat = true })
+	MakeTog(WEnv, "Lock Time", "WorldTimeLock", 3, { flat = true })
+	MakeSlider(WEnv, "Clock Time", "WorldTime", 0, 24, 4, {
+		suffix = "h",
+		step = 0.25,
+		fmt = function(v) return string.format("%.1f", v) end,
+	})
+	MakeHint(WEnv, "FullBright wyłącza cienie i podbija Ambient. No Fog czyści Atmosphere.", 5)
+
+	local WLight = MakeCard(TWorld, "CUSTOM LIGHT", "Kolor otoczenia (ColorShift).", 2)
+	MakeTog(WLight, "Custom Tint", "WorldCustomLight", 1, { flat = true })
+	MakeSlider(WLight, "Tint Hue", "WorldColorHue", 0, 1, 2, {
+		suffix = "",
+		step = 0.01,
+		fmt = function(v) return math.floor(v * 360) .. "°" end,
+	})
+	MakeSlider(WLight, "Tint Saturation", "WorldColorSat", 0, 1, 3, {
+		suffix = "",
+		step = 0.01,
+		fmt = function(v) return math.floor(v * 100) .. "%" end,
+	})
+
+	local WUi = MakeCard(TWorld, "MENU", nil, 3)
+	MakeTog(WUi, "Menu Blur", "MenuBlur", 1, { flat = true })
+	MakeSlider(WUi, "Blur Strength", "MenuBlurSize", 4, 48, 2, { suffix = "px", step = 1 })
+
+	local APlay = MakeCard(TAnim, "EMOTES", "Animacje przez Humanoid — inni widzą je w większości gier.", 1)
+	MakeButton(APlay, "Stop Animation", 1, function()
+		if AnimationsModule then
+			AnimationsModule.Stop()
+			showNotify("Animacja zatrzymana")
+		end
+	end)
+	local animOrder = 2
+	if AnimationsModule and AnimationsModule.LIST then
+		for _, entry in ipairs(AnimationsModule.LIST) do
+			local e = entry
+			MakeButton(APlay, e.label, animOrder, function()
+				if not AnimationsModule then
+					return
+				end
+				local ok, err = AnimationsModule.Play(e)
+				if ok then
+					showNotify("Animacja: " .. e.label)
+				else
+					showNotify(err or "Błąd animacji")
+				end
+			end)
+			animOrder += 1
+		end
+	end
+	MakeHint(APlay, "Wymaga Animator w postaci. Niektóre gry blokują custom animacje.", animOrder)
 
 	local MHit = MakeCard(TM, "HITBOX EXPANDER", "Niewidoczne hitboxy — nie powiększa modelu postaci.", 1)
 	MakeTog(MHit, "Head Size", "HeadSize", 1, { flat = true })
@@ -1806,11 +1872,20 @@ function UI.Init(S, ParentGUI, ConfigModule, TF)
 		step = 0.05,
 		fmt = function(v) return math.floor(v * 100) .. "%" end,
 	})
-	MakeTog(SHud, "Damage Log", "DamageLog", 7, { flat = true })
-	MakeTog(SHud, "Watermark", "Watermark", 8, { flat = true })
-	MakeTog(SHud, "Keybind List", "KeybindList", 9, { flat = true })
-	MakeTog(SHud, "Session Stats", "SessionStats", 10, { flat = true })
-	MakeTog(SHud, "Kill Feed", "KillFeed", 11, { flat = true })
+	MakeButton(SHud, "Test Hitmarker + Sound", 7, function()
+		if S.TestHitFeedback then
+			S.TestHitFeedback()
+			showNotify("Test hitmarker / dźwięku")
+		else
+			showNotify("Features nie załadowane")
+		end
+	end)
+	MakeHint(SHud, "Hitmarker: krzyżyk na środku ekranu po trafieniu (1.5s od strzału). Damage log pokazuje -HP.", 8)
+	MakeTog(SHud, "Damage Log", "DamageLog", 9, { flat = true })
+	MakeTog(SHud, "Watermark", "Watermark", 10, { flat = true })
+	MakeTog(SHud, "Keybind List", "KeybindList", 11, { flat = true })
+	MakeTog(SHud, "Session Stats", "SessionStats", 12, { flat = true })
+	MakeTog(SHud, "Kill Feed", "KillFeed", 13, { flat = true })
 
 	local SettingsAutoloadLbl
 	local SAuto = MakeCard(T2, "AUTOLOAD", "Config ładuje się przy starcie skryptu.", 5)

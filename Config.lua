@@ -133,11 +133,42 @@ function Config.EnforceRules(S)
 	if S.HitSoundVolume == nil then
 		S.HitSoundVolume = 0.45
 	end
-	if S.RageSilent == nil then
-		S.RageSilent = true
+	if S.RageAimMode == nil then
+		if S.RageSilent == false then
+			S.RageAimMode = "Snap"
+		else
+			S.RageAimMode = "Silent"
+		end
 	end
-	if S.RageCrosshair == nil then
-		S.RageCrosshair = true
+	if S.RageTrackSmooth == nil then
+		S.RageTrackSmooth = 0.35
+	end
+	if S.FullBright == nil then
+		S.FullBright = false
+	end
+	if S.NoFog == nil then
+		S.NoFog = false
+	end
+	if S.WorldTimeLock == nil then
+		S.WorldTimeLock = false
+	end
+	if S.WorldTime == nil then
+		S.WorldTime = 14
+	end
+	if S.WorldCustomLight == nil then
+		S.WorldCustomLight = false
+	end
+	if S.WorldColorHue == nil then
+		S.WorldColorHue = 0.55
+	end
+	if S.WorldColorSat == nil then
+		S.WorldColorSat = 0.35
+	end
+	if S.MenuBlur == nil then
+		S.MenuBlur = true
+	end
+	if S.MenuBlurSize == nil then
+		S.MenuBlurSize = 18
 	end
 	if S.AutoStrafe == nil then
 		S.AutoStrafe = false

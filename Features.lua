@@ -96,13 +96,13 @@ function Features.Init(S, _ParentGUI)
 		C("UIStroke", { Color = Color3.fromRGB(0, 0, 0), Thickness = 1, Transparency = 0.4, Parent = ln })
 	end
 
-	local HIT_SOUND_IDS = { 4868633804, 7147454322, 6026984224, 12222039 }
+	local HIT_SOUND_IDS = { 4868633804, 7147454322, 6026984224, 12222039, 9114481067 }
 	local hitSoundIdx = 1
 	local HitSound = C("Sound", {
 		Name = "HitSound",
 		SoundId = "rbxassetid://" .. HIT_SOUND_IDS[1],
 		Volume = 0.45,
-		Parent = HudGui,
+		Parent = game:GetService("SoundService"),
 	})
 	task.spawn(function()
 		for i, id in ipairs(HIT_SOUND_IDS) do
@@ -596,10 +596,10 @@ function Features.Init(S, _ParentGUI)
 	local dmgEntries = {}
 	local hitHideToken = 0
 	local dmgVisible = false
-	local HIT_WINDOW = 1.25
+	local HIT_WINDOW = 1.5
 
-	local function playHitSound()
-		if not S.HitSound then
+	local function playHitSound(force)
+		if not force and not S.HitSound then
 			return
 		end
 		HitSound.Volume = math.clamp(S.HitSoundVolume or 0.45, 0.05, 1)
@@ -860,9 +860,17 @@ function Features.Init(S, _ParentGUI)
 		if S.Hitmarker then
 			flashHitmarker(dmg)
 		end
-		playHitSound()
+		playHitSound(false)
 		if S.DamageLog then
 			addDmgLog(plrName or "Target", dmg, false)
+		end
+	end
+
+	function S.TestHitFeedback()
+		flashHitmarker(42)
+		playHitSound(true)
+		if S.DamageLog then
+			addDmgLog("Test", 42, false)
 		end
 	end
 

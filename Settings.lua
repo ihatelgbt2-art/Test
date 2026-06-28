@@ -1,7 +1,7 @@
 -- Plik: workspace/Vanguard/Settings.lua
 
 local Settings = {
-	Version = "2.9.3",
+	Version = "2.10.0",
 	-- ESP
 	ESP = false,
 	Box = false,
@@ -62,8 +62,19 @@ local Settings = {
 	RageVisibleCheck = true,
 	RageBots = true,
 	RageMaxDist = 500,
-	RageSilent = true,
-	RageCrosshair = true,
+	RageAimMode = "Silent",
+	RageTrackSmooth = 0.35,
+
+	-- WORLD
+	FullBright = false,
+	NoFog = false,
+	WorldTimeLock = false,
+	WorldTime = 14,
+	WorldCustomLight = false,
+	WorldColorHue = 0.55,
+	WorldColorSat = 0.35,
+	MenuBlur = true,
+	MenuBlurSize = 18,
 
 	-- MOVEMENT
 	BHop = false,
