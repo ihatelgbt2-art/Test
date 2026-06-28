@@ -98,7 +98,7 @@ function ESP.Init(S, ParentGUI, TF, Util)
 		if P:GetPlayerFromCharacter(model) then
 			return false
 		end
-		return Util.isAimableCharacter(model)
+		return Util.isValidTarget(model, nil)
 	end
 
 	local function refreshBots()
@@ -255,11 +255,13 @@ function ESP.Init(S, ParentGUI, TF, Util)
 	end
 
 	local function renderEntity(key, c, plr, displayName, isBot)
-		if not c or not c.Parent then
+		if not c or not c.Parent or not Util.isValidTarget(c, plr) then
 			if Cache[key] then
 				hideAll(Cache[key])
 			end
-			destroyCache(key)
+			if isBot or not plr then
+				destroyCache(key)
+			end
 			return
 		end
 
@@ -274,32 +276,23 @@ function ESP.Init(S, ParentGUI, TF, Util)
 		local hrp = Util and Util.resolveBodyPart(c, "HumanoidRootPart") or c:FindFirstChild("HumanoidRootPart")
 		local ch = ensureCache(key)
 
-		local val = h and hrp and hrp:IsA("BasePart") and h.Health > 0
-
-		if val then
-			local ok, cf = pcall(function()
-				return c:GetBoundingBox()
-			end)
-			if ok then
-				local dist = (Cam.CFrame.Position - cf.Position).Magnitude
-				if dist > S.MaxDist then
-					val = false
-				end
-			else
-				val = false
-			end
-		end
-
-		if not val then
+		if not h or not hrp or h.Health <= 0 then
 			hideAll(ch)
-			if isBot then
-				destroyCache(key)
-			end
 			return
 		end
 
-		local cf, sz = c:GetBoundingBox()
-		local dist = (Cam.CFrame.Position - cf.Position).Magnitude
+		local box = Util and Util.getEspBox(c, Cam)
+		if not box then
+			hideAll(ch)
+			return
+		end
+
+		local dist = box.dist
+		if dist > S.MaxDist then
+			hideAll(ch)
+			return
+		end
+
 		local clr = GetColor(plr, c, isBot)
 
 		if S.Chams then
@@ -311,17 +304,10 @@ function ESP.Init(S, ParentGUI, TF, Util)
 			ch.CHM.Enabled = false
 		end
 
-		local rp, onScreen = Cam:WorldToViewportPoint(cf.Position)
-		if not onScreen then
-			hideAll(ch)
-			return
-		end
-
-		local t2 = Cam:WorldToViewportPoint(cf.Position + Vector3.new(0, sz.Y / 2, 0))
-		local b2 = Cam:WorldToViewportPoint(cf.Position - Vector3.new(0, sz.Y / 2, 0))
-		local h2 = math.abs(t2.Y - b2.Y)
-		local w2 = math.abs(t2.Y - b2.Y) * (sz.X / sz.Y)
-		local bx, by = rp.X - w2 / 2, t2.Y
+		local h2 = math.abs(box.topY - box.bottomY)
+		local w2 = h2 * 0.55
+		local bx, by = box.centerX - w2 / 2, box.topY
+		local rp = Vector2.new(box.centerX, (box.topY + box.bottomY) / 2)
 
 		if S.Box then
 			ch.B.Size = UDim2.new(0, w2, 0, h2)
@@ -404,7 +390,7 @@ function ESP.Init(S, ParentGUI, TF, Util)
 					origin = Vector2.new(mpos.X, mpos.Y)
 				end
 			end
-			UpdLn(ch.Tr, origin, Vector2.new(rp.X, b2.Y), clr)
+			UpdLn(ch.Tr, origin, Vector2.new(rp.X, box.bottomY), clr)
 		else
 			ch.Tr.Visible = false
 		end

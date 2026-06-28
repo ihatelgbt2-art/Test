@@ -85,12 +85,77 @@ function Util.isDecorNpc(model)
 			or n:find("display", 1, true)
 			or n:find("eventdisplay", 1, true)
 			or n:find("intermission", 1, true)
-			or n:find("menu", 1, true) then
+			or n:find("menu", 1, true)
+			or n:find("spectator", 1, true)
+			or n:find("cutscene", 1, true)
+			or n:find("preview", 1, true)
+			or n:find("dummy", 1, true)
+			or n:find("ragdoll", 1, true)
+			or n:find("corpse", 1, true)
+			or n:find("dead", 1, true) then
 			return true
 		end
 		p = p.Parent
 	end
 	return false
+end
+
+function Util.isValidTarget(char, plr)
+	if not char or not char:IsA("Model") or not char.Parent then
+		return false
+	end
+	if not char:IsDescendantOf(workspace) then
+		return false
+	end
+	if Util.isDecorNpc(char) then
+		return false
+	end
+	local Players = game:GetService("Players")
+	if plr then
+		if plr.Character ~= char then
+			return false
+		end
+	else
+		if Players:GetPlayerFromCharacter(char) then
+			return false
+		end
+	end
+	return Util.isAimableCharacter(char)
+end
+
+function Util.getEspBox(char, cam)
+	local head = Util.resolveBodyPart(char, "Head")
+	local hrp = Util.resolveBodyPart(char, "HumanoidRootPart")
+	if not head or not hrp then
+		return nil
+	end
+
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local hipHeight = hum and hum.HipHeight or 2
+	local topWorld = head.Position + Vector3.new(0, head.Size.Y * 0.5 + 0.2, 0)
+	local bottomWorld = hrp.Position - Vector3.new(0, hipHeight + 1.5, 0)
+	local dist = (cam.CFrame.Position - hrp.Position).Magnitude
+
+	local topVp, topOn = cam:WorldToViewportPoint(topWorld)
+	local botVp, botOn = cam:WorldToViewportPoint(bottomWorld)
+	local midVp, midOn = cam:WorldToViewportPoint(hrp.Position)
+	if not topOn and not botOn and not midOn then
+		return nil
+	end
+
+	local h2 = math.max(math.abs(topVp.Y - botVp.Y), 8)
+	local w2 = h2 * 0.55
+	local maxW = cam.ViewportSize.X * 0.6
+	if w2 > maxW or h2 > cam.ViewportSize.Y * 0.95 then
+		return nil
+	end
+
+	return {
+		topY = topVp.Y,
+		bottomY = botVp.Y,
+		centerX = (topVp.X + botVp.X) / 2,
+		dist = dist,
+	}
 end
 
 function Util.isAimableCharacter(model)
@@ -138,7 +203,7 @@ function Util.refreshBotList(list, enabled, LP)
 		if Players:GetPlayerFromCharacter(model) then
 			return
 		end
-		if Util.isAimableCharacter(model) then
+		if Util.isValidTarget(model, nil) then
 			table.insert(list, model)
 		end
 	end

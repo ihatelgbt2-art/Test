@@ -210,7 +210,7 @@ function Rage.Init(S, ParentGUI, TF, Util)
 		if Players:GetPlayerFromCharacter(model) then
 			return false
 		end
-		return Util.isAimableCharacter(model)
+		return Util.isValidTarget(model, nil)
 	end
 
 	local function refreshBots()
@@ -229,7 +229,7 @@ function Rage.Init(S, ParentGUI, TF, Util)
 			return false
 		end
 		local char = plr.Character
-		if not isAliveChar(char) then
+		if not Util.isValidTarget(char, plr) then
 			return false
 		end
 		if TF and TF.shouldExclude(S, LP, plr) then
@@ -251,7 +251,7 @@ function Rage.Init(S, ParentGUI, TF, Util)
 		if S.RageBots then
 			refreshBots()
 			for _, model in ipairs(botList) do
-				if model.Parent and isAliveChar(model) then
+				if Util.isValidTarget(model, nil) then
 					table.insert(list, { char = model, plr = nil })
 				end
 			end
@@ -327,7 +327,7 @@ function Rage.Init(S, ParentGUI, TF, Util)
 
 	local function scoreRageTarget(entry)
 		local char = entry.char
-		if not isAliveChar(char) then
+		if not Util.isValidTarget(char, entry.plr) then
 			return nil
 		end
 
@@ -359,7 +359,7 @@ function Rage.Init(S, ParentGUI, TF, Util)
 	local function getStableRageTarget()
 		if rageLock and tick() < rageLockUntil then
 			local char = rageLock.char
-			if char and isAliveChar(char) then
+			if Util.isValidTarget(char, rageLock.plr) then
 				local part = getRageAimPart(char) or rageLock.part
 				if part and part.Parent and part:IsDescendantOf(char) then
 					if not S.RageVisibleCheck or isPartVisibleFromCamera(part, char) then
@@ -414,7 +414,7 @@ function Rage.Init(S, ParentGUI, TF, Util)
 			rageLock = nil
 			return
 		end
-		if not isAliveChar(tgt.char) then
+		if not Util.isValidTarget(tgt.char, tgt.plr) then
 			rageLock = nil
 			return
 		end

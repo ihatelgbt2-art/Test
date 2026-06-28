@@ -251,7 +251,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 			return false
 		end
 		local char = plr.Character
-		if not isAliveChar(char) then
+		if not Util.isValidTarget(char, plr) then
 			return false
 		end
 		if TF and TF.shouldExclude(S, LP, plr) then
@@ -291,7 +291,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		if S.AimBots then
 			refreshBots()
 			for _, model in ipairs(botList) do
-				if model.Parent and isAliveChar(model) then
+				if Util.isValidTarget(model, nil) then
 					table.insert(list, { char = model, plr = nil })
 				end
 			end
@@ -301,7 +301,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 
 	local function scoreTarget(entry, maxFov)
 		local char = entry.char
-		if not isAliveChar(char) then
+		if not Util.isValidTarget(char, entry.plr) then
 			return nil
 		end
 		local part = resolveHitPart(char)
@@ -356,7 +356,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		if triggerLock and tick() < triggerLockUntil then
 			local part = triggerLock.part
 			local char = triggerLock.char
-			if part and part.Parent and char and isAliveChar(char) and isVisible(part, char) then
+			if part and part.Parent and char and Util.isValidTarget(char, triggerLock.plr) and isVisible(part, char) then
 				if screenDist(part, char) <= limit then
 					return triggerLock
 				end
@@ -381,7 +381,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		if silentBusy or pendingSilent or not tgt or not tgt.part or not tgt.char then
 			return false
 		end
-		if not isAliveChar(tgt.char) then
+		if not Util.isValidTarget(tgt.char, tgt.plr) then
 			return false
 		end
 		local pos = Util.getFirePosition(tgt.char, tgt.part)
@@ -412,6 +412,14 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		end)
 	end
 
+	local function queueSilentShot(tgt)
+		if not doSilentShot(tgt) then
+			return false
+		end
+		task.defer(processPendingSilent)
+		return true
+	end
+
 	local function tryTriggerShot()
 		if S.MenuOpen or S.MasterRage or silentBusy then
 			return
@@ -425,7 +433,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		end
 
 		local tgt = getStableTriggerTarget()
-		if not tgt or not tgt.part or not tgt.char or not isAliveChar(tgt.char) then
+		if not tgt or not tgt.part or not tgt.char or not Util.isValidTarget(tgt.char, tgt.plr) then
 			return
 		end
 		if screenDist(tgt.part, tgt.char) > fovLimit() then
@@ -452,11 +460,24 @@ function Aim.Init(S, ParentGUI, TF, Util)
 			return Enum.ContextActionResult.Pass
 		end
 		local tgt = pickBestTarget(fovLimit())
-		if tgt and doSilentShot(tgt) then
+		if tgt and queueSilentShot(tgt) then
 			return Enum.ContextActionResult.Sink
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseButton1)
+
+	UIS.InputBegan:Connect(function(input, processed)
+		if processed or S.MenuOpen or S.MasterRage or not S.Silent then
+			return
+		end
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+			return
+		end
+		local tgt = pickBestTarget(fovLimit())
+		if tgt then
+			queueSilentShot(tgt)
+		end
+	end)
 
 	UIS.InputBegan:Connect(function(input)
 		if S.MenuOpen or S.MasterRage then
