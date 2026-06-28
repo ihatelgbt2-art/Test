@@ -43,23 +43,37 @@ function Aim.Init(S, ParentGUI)
 	C("UICorner", { CornerRadius = UDim.new(1, 0), Parent = FOVC })
 	C("UIStroke", { Color = S.V, Thickness = 1, Transparency = 0.3, Parent = FOVC })
 
-	local TriggerHud = C("TextLabel", {
+	local TriggerHud = C("Frame", {
 		Name = "TriggerHud",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Size = UDim2.new(0, 160, 0, 26),
-		Position = UDim2.new(0.5, 0, 1, -48),
-		BackgroundColor3 = Color3.fromRGB(12, 12, 16),
-		BackgroundTransparency = 0.25,
-		Text = "TRIGGER · OFF",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Size = UDim2.new(0, 10, 0, 10),
+		Position = UDim2.new(1, -20, 0.58, 0),
+		BackgroundColor3 = S.V,
+		BackgroundTransparency = 0.15,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = 50,
+		Parent = ParentGUI,
+	})
+	C("UICorner", { CornerRadius = UDim.new(1, 0), Parent = TriggerHud })
+
+	local TriggerHudFull = C("TextLabel", {
+		Name = "TriggerHudFull",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Size = UDim2.new(0, 130, 0, 22),
+		Position = UDim2.new(1, -20, 0.58, 0),
+		BackgroundColor3 = Color3.fromRGB(14, 14, 18),
+		BackgroundTransparency = 0.35,
+		Text = "TRIGGER",
 		Font = Enum.Font.GothamBold,
-		TextSize = 11,
+		TextSize = 10,
 		TextColor3 = Color3.fromRGB(130, 130, 140),
 		Visible = false,
 		ZIndex = 50,
 		Parent = ParentGUI,
 	})
-	C("UICorner", { CornerRadius = UDim.new(0, 6), Parent = TriggerHud })
-	C("UIStroke", { Color = Color3.fromRGB(40, 40, 48), Thickness = 1, Parent = TriggerHud })
+	C("UICorner", { CornerRadius = UDim.new(0, 6), Parent = TriggerHudFull })
+	C("UIStroke", { Color = Color3.fromRGB(40, 40, 48), Thickness = 1, Transparency = 0.5, Parent = TriggerHudFull })
 
 	local function getTriggerKey()
 		if not S.TriggerKey or S.TriggerKey == "" or S.TriggerKey == "None" then
@@ -97,23 +111,40 @@ function Aim.Init(S, ParentGUI)
 	local function updTriggerHud()
 		if not S.ShowTriggerHud or not S.Trigger then
 			TriggerHud.Visible = false
+			TriggerHudFull.Visible = false
 			return
 		end
-		TriggerHud.Visible = true
+
+		local armed = triggerArmed()
+		local active = false
+		local label = "IDLE"
+
 		if S.TriggerMode == "Toggle" then
-			if triggerToggled then
-				TriggerHud.Text = "TRIGGER · ON"
-				TriggerHud.TextColor3 = S.V
-			else
-				TriggerHud.Text = "TRIGGER · OFF"
-				TriggerHud.TextColor3 = Color3.fromRGB(130, 130, 140)
-			end
-		elseif triggerArmed() then
-			TriggerHud.Text = "TRIGGER · HOLD"
-			TriggerHud.TextColor3 = S.V
+			active = triggerToggled
+			label = triggerToggled and "ON" or "OFF"
 		else
-			TriggerHud.Text = "TRIGGER · IDLE"
-			TriggerHud.TextColor3 = Color3.fromRGB(130, 130, 140)
+			active = armed
+			label = armed and "HOLD" or "IDLE"
+		end
+
+		if S.TriggerHudMinimal then
+			TriggerHudFull.Visible = false
+			TriggerHud.Visible = active
+			TriggerHud.BackgroundColor3 = S.V
+			TriggerHud.BackgroundTransparency = active and 0.1 or 1
+		else
+			TriggerHud.Visible = false
+			if active then
+				TriggerHudFull.Visible = true
+				TriggerHudFull.Text = "TRIGGER · " .. label
+				TriggerHudFull.TextColor3 = S.V
+			else
+				TriggerHudFull.Visible = S.TriggerMode == "Toggle"
+				if TriggerHudFull.Visible then
+					TriggerHudFull.Text = "TRIGGER · OFF"
+					TriggerHudFull.TextColor3 = Color3.fromRGB(100, 100, 110)
+				end
+			end
 		end
 	end
 
@@ -309,9 +340,11 @@ function Aim.Init(S, ParentGUI)
 
 	local function fireClick()
 		local loc = UIS:GetMouseLocation()
-		VIM:SendMouseButtonEvent(loc.X, loc.Y, 0, true, game, 0)
+		local jx = (math.random() - 0.5) * 2
+		local jy = (math.random() - 0.5) * 2
+		VIM:SendMouseButtonEvent(loc.X + jx, loc.Y + jy, 0, true, game, 0)
 		task.defer(function()
-			VIM:SendMouseButtonEvent(loc.X, loc.Y, 0, false, game, 0)
+			VIM:SendMouseButtonEvent(loc.X + jx, loc.Y + jy, 0, false, game, 0)
 		end)
 	end
 
@@ -335,7 +368,9 @@ function Aim.Init(S, ParentGUI)
 		if not triggerArmed() then
 			return
 		end
-		local delaySec = math.max(S.TriggerDelay or 1, 1) / 1000
+		local baseDelay = math.max(S.TriggerDelay or 1, 1) / 1000
+		local jitter = baseDelay * (math.random() * 0.2 - 0.1)
+		local delaySec = baseDelay + jitter
 		if tick() - lastTrigger < delaySec then
 			return
 		end

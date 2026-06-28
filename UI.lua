@@ -1461,31 +1461,33 @@ function UI.Init(S, ParentGUI, ConfigModule)
 	MakeBind(T3, "Trigger Key", "TriggerKey", 8)
 	MakeSlider(T3, "Trigger Delay", "TriggerDelay", 1, 500, 9, { suffix = "ms", step = 1 })
 	MakeTog(T3, "Trigger Status HUD", "ShowTriggerHud", 10)
-	MakeHint(T3, "Hold = strzela gdy trzymasz klawisz. Toggle = ON/OFF klawiszem, potem strzela w FOV.", 11)
-	MakeSection(T3, "TARGETING", 12)
-	MakeTog(T3, "Visible Check", "VisibleCheck", 13)
-	MakeTog(T3, "Target Bots", "AimBots", 14)
+	MakeTog(T3, "Minimal Trigger HUD", "TriggerHudMinimal", 11)
+	MakeHint(T3, "Minimal = mała kropka po prawej (tylko gdy aktywny). Pełny = etykieta tekstowa.", 12)
+	MakeHint(T3, "Hold = strzela gdy trzymasz klawisz. Toggle = ON/OFF klawiszem, potem strzela w FOV.", 13)
+	MakeSection(T3, "TARGETING", 14)
+	MakeTog(T3, "Visible Check", "VisibleCheck", 15)
+	MakeTog(T3, "Target Bots", "AimBots", 16)
 	MakeChoice(T3, "Target Priority", "TargetMode", {
 		{ label = "FOV", value = "FOV" },
 		{ label = "Dist", value = "Distance" },
 		{ label = "HP", value = "Health" },
-	}, 15)
+	}, 17)
 	MakeChoice(T3, "Hit Part", "HitPart", {
 		{ label = "Head", value = "Head" },
 		{ label = "Torso", value = "Torso" },
 		{ label = "Random", value = "Random" },
 		{ label = "Closest", value = "Closest" },
-	}, 16)
-	MakeSection(T3, "FOV & SMOOTH", 17)
-	MakeTog(T3, "Show FOV Circle", "ShowFOV", 18)
-	MakeSlider(T3, "FOV Size", "FOV", 20, 300, 19, { suffix = "px", step = 5 })
-	MakeSlider(T3, "Smoothing", "Smooth", 0.05, 0.95, 20, {
+	}, 18)
+	MakeSection(T3, "FOV & SMOOTH", 19)
+	MakeTog(T3, "Show FOV Circle", "ShowFOV", 20)
+	MakeSlider(T3, "FOV Size", "FOV", 20, 300, 21, { suffix = "px", step = 5 })
+	MakeSlider(T3, "Smoothing", "Smooth", 0.05, 0.95, 22, {
 		suffix = "",
 		step = 0.05,
 		fmt = function(v) return math.floor(v * 100) .. "%" end,
 	})
-	MakeTog(T3, "Aim Curve + Jitter", "AimCurve", 21)
-	MakeHint(T3, "Smoothing działa tylko z Aimbot (RMB). Silent = flick przy strzale, bez trackingu.", 22)
+	MakeTog(T3, "Aim Curve + Jitter", "AimCurve", 23)
+	MakeHint(T3, "Smoothing działa tylko z Aimbot (RMB). Silent = flick przy strzale, bez trackingu.", 24)
 
 	MakeSection(T2, "MOVEMENT", 1)
 	MakeTog(T2, "Bunny Hop", "BHop", 2)
