@@ -1,7 +1,7 @@
 -- Plik: workspace/Vanguard/Settings.lua
 
 local Settings = {
-	Version = "2.6.0",
+	Version = "2.7.0",
 	-- ESP
 	ESP = false,
 	Box = false,
@@ -72,6 +72,12 @@ local Settings = {
 	Spectators = false,
 	Hitmarker = false,
 	DamageLog = false,
+	Watermark = false,
+	KeybindList = false,
+	SessionStats = false,
+	KillFeed = false,
+	HitSound = true,
+	HitSoundVolume = 0.45,
 
 	-- FRIENDS
 	FriendClick = true,

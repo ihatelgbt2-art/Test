@@ -1662,7 +1662,7 @@ function UI.Init(S, ParentGUI, ConfigModule, TF)
 		table.sort(sorted)
 		for i, uid in ipairs(sorted) do
 			local row = C("Frame", {
-				Size = UDim2.new(1, 0, 0, 28),
+				Size = UDim2.new(1, 0, 0, 32),
 				BackgroundColor3 = Color3.fromRGB(22, 22, 28),
 				BorderSizePixel = 0,
 				LayoutOrder = i,
@@ -1670,9 +1670,28 @@ function UI.Init(S, ParentGUI, ConfigModule, TF)
 				Parent = FriendListHost,
 			})
 			C("UICorner", { CornerRadius = UDim.new(0, 5), Parent = row })
+			local avWrap = C("Frame", {
+				Size = UDim2.new(0, 24, 0, 24),
+				Position = UDim2.new(0, 6, 0.5, -12),
+				BackgroundColor3 = Color3.fromRGB(40, 40, 48),
+				BorderSizePixel = 0,
+				ZIndex = 8,
+				Parent = row,
+			})
+			C("UICorner", { CornerRadius = UDim.new(1, 0), Parent = avWrap })
+			local avImg = C("ImageLabel", {
+				Size = UDim2.new(1, -2, 1, -2),
+				Position = UDim2.new(0, 1, 0, 1),
+				BackgroundTransparency = 1,
+				ScaleType = Enum.ScaleType.Crop,
+				Image = string.format("rbxthumb://type=AvatarHeadShot&id=%d&w=48&h=48", uid),
+				ZIndex = 9,
+				Parent = avWrap,
+			})
+			C("UICorner", { CornerRadius = UDim.new(1, 0), Parent = avImg })
 			local nameLbl = C("TextLabel", {
-				Size = UDim2.new(1, -36, 1, 0),
-				Position = UDim2.new(0, 10, 0, 0),
+				Size = UDim2.new(1, -62, 1, 0),
+				Position = UDim2.new(0, 36, 0, 0),
 				BackgroundTransparency = 1,
 				Text = "User " .. tostring(uid),
 				Font = Enum.Font.GothamMedium,
@@ -1748,7 +1767,17 @@ function UI.Init(S, ParentGUI, ConfigModule, TF)
 	MakeSlider(SHud, "Crosshair Size", "CrosshairSize", 2, 12, 2, { suffix = "px", step = 1 })
 	MakeTog(SHud, "Spectator List", "Spectators", 3, { flat = true })
 	MakeTog(SHud, "Hitmarker", "Hitmarker", 4, { flat = true })
-	MakeTog(SHud, "Damage Log", "DamageLog", 5, { flat = true })
+	MakeTog(SHud, "Hit Sound", "HitSound", 5, { flat = true })
+	MakeSlider(SHud, "Hit Sound Volume", "HitSoundVolume", 0.1, 1, 6, {
+		suffix = "",
+		step = 0.05,
+		fmt = function(v) return math.floor(v * 100) .. "%" end,
+	})
+	MakeTog(SHud, "Damage Log", "DamageLog", 7, { flat = true })
+	MakeTog(SHud, "Watermark", "Watermark", 8, { flat = true })
+	MakeTog(SHud, "Keybind List", "KeybindList", 9, { flat = true })
+	MakeTog(SHud, "Session Stats", "SessionStats", 10, { flat = true })
+	MakeTog(SHud, "Kill Feed", "KillFeed", 11, { flat = true })
 
 	local SettingsAutoloadLbl
 	local SAuto = MakeCard(T2, "AUTOLOAD", "Config ładuje się przy starcie skryptu.", 5)

@@ -125,6 +125,11 @@ function TeamFriends.Init(S, ParentGUI, accent, onFriendChanged)
 	local LP = Players.LocalPlayer
 	local ACC = accent or Color3.fromRGB(0, 255, 150)
 
+	local CG = pcall(function() return game:GetService("CoreGui").Name end)
+		and game:GetService("CoreGui")
+		or LP:WaitForChild("PlayerGui")
+	pcall(function() CG.VanguardFriendPopup:Destroy() end)
+
 	local function C(class, props)
 		local i = Instance.new(class)
 		for k, v in pairs(props) do
@@ -133,13 +138,22 @@ function TeamFriends.Init(S, ParentGUI, accent, onFriendChanged)
 		return i
 	end
 
+	local PopGui = C("ScreenGui", {
+		Name = "VanguardFriendPopup",
+		IgnoreGuiInset = true,
+		ResetOnSpawn = false,
+		DisplayOrder = 120,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		Parent = CG,
+	})
+
 	local PopupRoot = C("Frame", {
 		Name = "FriendPopupRoot",
 		Size = UDim2.new(0, 280, 0, 72),
 		Position = UDim2.new(0.5, -140, 0, 56),
 		BackgroundTransparency = 1,
 		ZIndex = 95,
-		Parent = ParentGUI,
+		Parent = PopGui,
 	})
 
 	local PopupCard = C("Frame", {
@@ -163,6 +177,7 @@ function TeamFriends.Init(S, ParentGUI, accent, onFriendChanged)
 		Position = UDim2.new(0, 12, 0.5, -22),
 		BackgroundColor3 = Color3.fromRGB(28, 28, 34),
 		BorderSizePixel = 0,
+		ScaleType = Enum.ScaleType.Crop,
 		ZIndex = 97,
 		Parent = PopupCard,
 	})
@@ -214,12 +229,13 @@ function TeamFriends.Init(S, ParentGUI, accent, onFriendChanged)
 			popupStroke.Color = Color3.fromRGB(90, 90, 100)
 		end
 
-		Avatar.Image = ""
+		Avatar.Image = string.format("rbxthumb://type=AvatarHeadShot&id=%d&w=48&h=48", plr.UserId)
+		Avatar.ScaleType = Enum.ScaleType.Crop
 		task.spawn(function()
 			local ok, thumb = pcall(function()
 				return Players:GetUserThumbnailAsync(plr.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
 			end)
-			if ok and Avatar.Parent then
+			if ok and thumb and thumb ~= "" and Avatar.Parent then
 				Avatar.Image = thumb
 			end
 		end)

@@ -27,7 +27,11 @@ function Features.Init(S, _ParentGUI)
 
 	local Z = {
 		cross = 10,
-		hit = 11,
+		hit = 15,
+		wm = 12,
+		kb = 12,
+		stats = 12,
+		kf = 13,
 		spec = 20,
 		specRow = 21,
 		dmg = 20,
@@ -72,14 +76,14 @@ function Features.Init(S, _ParentGUI)
 		Name = "Hitmarker",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 0.5, 0),
-		Size = UDim2.new(0, 18, 0, 18),
+		Size = UDim2.new(0, 26, 0, 26),
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = HudGui,
 	}), Z.hit)
 	for i = 1, 4 do
 		local ln = tagZ(C("Frame", {
-			Size = UDim2.new(0, 7, 0, 2),
+			Size = UDim2.new(0, 10, 0, 3),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0.5, 0, 0.5, 0),
 			Rotation = (i - 1) * 90 + 45,
@@ -88,7 +92,145 @@ function Features.Init(S, _ParentGUI)
 			Parent = HitGroup,
 		}), Z.hit + 1)
 		C("UICorner", { CornerRadius = UDim.new(1, 0), Parent = ln })
+		C("UIStroke", { Color = Color3.fromRGB(0, 0, 0), Thickness = 1, Transparency = 0.4, Parent = ln })
 	end
+
+	local HitSound = C("Sound", {
+		Name = "HitSound",
+		SoundId = "rbxassetid://9114481067",
+		Volume = 0.45,
+		Parent = HudGui,
+	})
+
+	local session = { kills = 0, hits = 0, shots = 0, start = tick() }
+
+	local Watermark = tagZ(C("Frame", {
+		Name = "Watermark",
+		Size = UDim2.new(0, 168, 0, 42),
+		Position = UDim2.new(0, 14, 0, 12),
+		BackgroundColor3 = PANEL_BG,
+		BackgroundTransparency = 0.12,
+		BorderSizePixel = 0,
+		Visible = false,
+		Parent = HudGui,
+	}), Z.wm)
+	C("UICorner", { CornerRadius = UDim.new(0, 8), Parent = Watermark })
+	C("UIStroke", { Color = ACC, Thickness = 1, Transparency = 0.55, Parent = Watermark })
+	tagZ(C("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 16),
+		Position = UDim2.new(0, 10, 0, 8),
+		BackgroundTransparency = 1,
+		Text = "VANGUARD",
+		Font = Enum.Font.GothamBlack,
+		TextSize = 12,
+		TextColor3 = Color3.fromRGB(240, 240, 245),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = Watermark,
+	}), Z.wm + 1)
+	local WmSub = tagZ(C("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 12),
+		Position = UDim2.new(0, 10, 0, 24),
+		BackgroundTransparency = 1,
+		Text = "v?",
+		Font = Enum.Font.GothamMedium,
+		TextSize = 10,
+		TextColor3 = ACC,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = Watermark,
+	}), Z.wm + 1)
+
+	local KeybindPanel = tagZ(C("Frame", {
+		Name = "KeybindList",
+		Size = UDim2.new(0, 190, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 14, 1, -14),
+		BackgroundColor3 = PANEL_BG,
+		BackgroundTransparency = 0.12,
+		BorderSizePixel = 0,
+		Visible = false,
+		Parent = HudGui,
+	}), Z.kb)
+	C("UICorner", { CornerRadius = UDim.new(0, 8), Parent = KeybindPanel })
+	C("UIStroke", { Color = ACC, Thickness = 1, Transparency = 0.55, Parent = KeybindPanel })
+	C("UIPadding", {
+		PaddingTop = UDim.new(0, 8),
+		PaddingBottom = UDim.new(0, 8),
+		PaddingLeft = UDim.new(0, 10),
+		PaddingRight = UDim.new(0, 10),
+		Parent = KeybindPanel,
+	})
+	C("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder, Parent = KeybindPanel })
+	tagZ(C("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 12),
+		BackgroundTransparency = 1,
+		Text = "KEYBINDS",
+		Font = Enum.Font.GothamBold,
+		TextSize = 9,
+		TextColor3 = Color3.fromRGB(150, 150, 162),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		LayoutOrder = 0,
+		Parent = KeybindPanel,
+	}), Z.kb + 1)
+	local KeybindBody = C("Frame", {
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		LayoutOrder = 1,
+		Parent = KeybindPanel,
+	})
+	C("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder, Parent = KeybindBody })
+
+	local StatsPanel = tagZ(C("Frame", {
+		Name = "SessionStats",
+		Size = UDim2.new(0, 132, 0, 88),
+		Position = UDim2.new(1, -146, 0, 12),
+		BackgroundColor3 = PANEL_BG,
+		BackgroundTransparency = 0.12,
+		BorderSizePixel = 0,
+		Visible = false,
+		Parent = HudGui,
+	}), Z.stats)
+	C("UICorner", { CornerRadius = UDim.new(0, 8), Parent = StatsPanel })
+	C("UIStroke", { Color = ACC, Thickness = 1, Transparency = 0.55, Parent = StatsPanel })
+	tagZ(C("TextLabel", {
+		Size = UDim2.new(1, -16, 0, 12),
+		Position = UDim2.new(0, 10, 0, 8),
+		BackgroundTransparency = 1,
+		Text = "SESSION",
+		Font = Enum.Font.GothamBold,
+		TextSize = 9,
+		TextColor3 = Color3.fromRGB(150, 150, 162),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = StatsPanel,
+	}), Z.stats + 1)
+	local StatsLines = {}
+	for i, key in ipairs({ "Kills", "Hits", "Accuracy", "Time" }) do
+		local row = tagZ(C("TextLabel", {
+			Size = UDim2.new(1, -16, 0, 14),
+			Position = UDim2.new(0, 10, 0, 22 + (i - 1) * 16),
+			BackgroundTransparency = 1,
+			Text = key .. "  —",
+			Font = Enum.Font.GothamMedium,
+			TextSize = 10,
+			TextColor3 = Color3.fromRGB(210, 210, 218),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = StatsPanel,
+		}), Z.stats + 1)
+		StatsLines[key] = row
+	end
+
+	local KillFeedPanel = tagZ(C("Frame", {
+		Name = "KillFeed",
+		Size = UDim2.new(0, 240, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Position = UDim2.new(1, -254, 0, 108),
+		BackgroundTransparency = 1,
+		Visible = false,
+		Parent = HudGui,
+	}), Z.kf)
+	C("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Top, Parent = KillFeedPanel })
+	local killEntries = {}
 
 	local SpecPanel = tagZ(C("Frame", {
 		Name = "Spectators",
@@ -340,22 +482,223 @@ function Features.Init(S, _ParentGUI)
 	local dmgEntries = {}
 	local hitHideToken = 0
 	local dmgVisible = false
+	local HIT_WINDOW = 1.25
+
+	local function playHitSound()
+		if not S.HitSound then
+			return
+		end
+		HitSound.Volume = math.clamp(S.HitSoundVolume or 0.45, 0.05, 1)
+		pcall(function()
+			HitSound:Play()
+		end)
+	end
+
+	local function formatSessionTime()
+		local sec = math.floor(tick() - session.start)
+		local m = math.floor(sec / 60)
+		local s = sec % 60
+		return string.format("%02d:%02d", m, s)
+	end
+
+	local function updSessionStats()
+		if not S.SessionStats or S.MenuOpen then
+			StatsPanel.Visible = false
+			return
+		end
+		StatsPanel.Visible = true
+		local acc = session.shots > 0 and math.floor(session.hits / session.shots * 100) or 0
+		StatsLines.Kills.Text = "Kills  " .. tostring(session.kills)
+		StatsLines.Hits.Text = "Hits  " .. tostring(session.hits)
+		StatsLines.Accuracy.Text = "Accuracy  " .. acc .. "%"
+		StatsLines.Time.Text = "Time  " .. formatSessionTime()
+	end
+
+	local function addKillFeed(name)
+		if not S.KillFeed or S.MenuOpen then
+			return
+		end
+		KillFeedPanel.Visible = true
+		local row = tagZ(C("Frame", {
+			Size = UDim2.new(1, 0, 0, 28),
+			BackgroundColor3 = PANEL_BG,
+			BackgroundTransparency = 0.1,
+			BorderSizePixel = 0,
+			LayoutOrder = 1,
+			Parent = KillFeedPanel,
+		}), Z.kf + 1)
+		C("UICorner", { CornerRadius = UDim.new(0, 6), Parent = row })
+		C("UIStroke", { Color = ACC, Thickness = 1, Transparency = 0.6, Parent = row })
+		tagZ(C("TextLabel", {
+			Size = UDim2.new(1, -12, 1, 0),
+			Position = UDim2.new(0, 8, 0, 0),
+			BackgroundTransparency = 1,
+			Text = "Eliminated  " .. name,
+			Font = Enum.Font.GothamSemibold,
+			TextSize = 11,
+			TextColor3 = Color3.fromRGB(235, 235, 242),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Parent = row,
+		}), Z.kf + 2)
+		row.Position = UDim2.new(0, 16, 0, 0)
+		Tween(row, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0, 0, 0, 0),
+		})
+		table.insert(killEntries, 1, row)
+		for i, entry in ipairs(killEntries) do
+			entry.LayoutOrder = i
+		end
+		if #killEntries > 4 then
+			local old = table.remove(killEntries)
+			pcall(function() old:Destroy() end)
+		end
+		task.delay(4, function()
+			if row.Parent then
+				Tween(row, TweenInfo.new(0.2), { BackgroundTransparency = 1, Position = UDim2.new(0, 12, 0, 0) })
+				task.delay(0.22, function()
+					pcall(function() row:Destroy() end)
+					for i, entry in ipairs(killEntries) do
+						if entry == row then
+							table.remove(killEntries, i)
+							break
+						end
+					end
+					if #killEntries == 0 then
+						KillFeedPanel.Visible = false
+					end
+				end)
+			end
+		end)
+	end
+
+	local function clearKeybindRows()
+		for _, ch in ipairs(KeybindBody:GetChildren()) do
+			if ch:IsA("GuiObject") and not ch:IsA("UIListLayout") then
+				ch:Destroy()
+			end
+		end
+	end
+
+	local function addKeyRow(label, key, order)
+		local row = tagZ(C("Frame", {
+			Size = UDim2.new(1, 0, 0, 18),
+			BackgroundTransparency = 1,
+			LayoutOrder = order,
+			Parent = KeybindBody,
+		}), Z.kb + 1)
+		tagZ(C("TextLabel", {
+			Size = UDim2.new(0.55, 0, 1, 0),
+			BackgroundTransparency = 1,
+			Text = label,
+			Font = Enum.Font.GothamMedium,
+			TextSize = 10,
+			TextColor3 = Color3.fromRGB(170, 170, 180),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = row,
+		}), Z.kb + 2)
+		tagZ(C("TextLabel", {
+			Size = UDim2.new(0.45, -4, 1, 0),
+			Position = UDim2.new(0.55, 0, 0, 0),
+			BackgroundTransparency = 1,
+			Text = key,
+			Font = Enum.Font.GothamBold,
+			TextSize = 10,
+			TextColor3 = ACC,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Parent = row,
+		}), Z.kb + 2)
+	end
+
+	local function updKeybindList()
+		if not S.KeybindList or S.MenuOpen then
+			KeybindPanel.Visible = false
+			return
+		end
+		clearKeybindRows()
+		local order = 1
+		addKeyRow("Menu", "RightShift", order)
+		order += 1
+		if S.Trigger then
+			local mode = S.TriggerMode == "Toggle" and "Toggle" or "Hold"
+			addKeyRow("Trigger", (S.TriggerKey or "?") .. " · " .. mode, order)
+			order += 1
+		end
+		if S.MasterRage and S.RageBot then
+			local mode = S.RageMode == "Toggle" and "Toggle" or "Hold"
+			addKeyRow("Ragebot", (S.RageKey or "?") .. " · " .. mode, order)
+			order += 1
+		end
+		if S.Aimbot then
+			addKeyRow("Aimbot", "RMB", order)
+			order += 1
+		end
+		if S.FriendClick then
+			addKeyRow("Friend", "Ctrl+Click", order)
+		end
+		KeybindPanel.Visible = true
+	end
+
+	local function updWatermark()
+		if not S.Watermark or S.MenuOpen then
+			Watermark.Visible = false
+			return
+		end
+		WmSub.Text = "v" .. (S.Version or "?")
+		Watermark.Visible = true
+	end
 
 	local function flashHitmarker(dmg)
 		hitHideToken = hitHideToken + 1
 		local token = hitHideToken
 		HitGroup.Visible = true
+		HitGroup.Size = UDim2.new(0, 20, 0, 20)
 		local col = dmg >= 50 and Color3.fromRGB(255, 90, 90) or Color3.fromRGB(255, 255, 255)
 		for _, ch in ipairs(HitGroup:GetChildren()) do
 			if ch:IsA("Frame") then
 				ch.BackgroundColor3 = col
 			end
 		end
-		task.delay(0.18, function()
+		Tween(HitGroup, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(0, 28, 0, 28),
+		})
+		task.delay(0.12, function()
+			if token == hitHideToken then
+				Tween(HitGroup, TweenInfo.new(0.1), { Size = UDim2.new(0, 22, 0, 22) })
+			end
+		end)
+		task.delay(0.28, function()
 			if token == hitHideToken then
 				HitGroup.Visible = false
 			end
 		end)
+	end
+
+	local function registerHit(hum, dmg, plrName)
+		local recent = S.LastShotAt and (tick() - S.LastShotAt) <= HIT_WINDOW
+		if not recent then
+			return
+		end
+		if S.LastShotHum and hum ~= S.LastShotHum then
+			return
+		end
+		session.hits += 1
+		if S.Hitmarker then
+			flashHitmarker(dmg)
+		end
+		playHitSound()
+		if S.DamageLog then
+			addDmgLog(plrName or "Target", dmg, false)
+		end
+	end
+
+	local function registerKill(plrName)
+		local recent = S.LastShotAt and (tick() - S.LastShotAt) <= 2.5
+		if not recent then
+			return
+		end
+		session.kills += 1
+		addKillFeed(plrName or "Target")
 	end
 
 	local function setDmgPanelVisible(on)
@@ -519,22 +862,17 @@ function Features.Init(S, _ParentGUI)
 		end
 		local last = hum.Health
 		humWatch[hum] = hum.HealthChanged:Connect(function(hp)
-			if not S.Hitmarker and not S.DamageLog then
-				last = hp
-				return
-			end
-			if S.LastShotAt and tick() - S.LastShotAt > 0.45 then
+			local trackHit = S.Hitmarker or S.HitSound or S.DamageLog or S.SessionStats or S.KillFeed
+			if not trackHit then
 				last = hp
 				return
 			end
 			if hp < last then
 				local dmg = last - hp
-				if S.Hitmarker then
-					flashHitmarker(dmg)
-				end
-				if S.DamageLog then
-					addDmgLog(plrName or "Target", dmg, false)
-				end
+				registerHit(hum, dmg, plrName)
+			end
+			if hp <= 0 and last > 0 then
+				registerKill(plrName)
 			end
 			last = hp
 		end)
@@ -672,9 +1010,17 @@ function Features.Init(S, _ParentGUI)
 			Cross.Size = UDim2.new(0, sz, 0, sz)
 			Cross.BackgroundColor3 = ACC
 		end
+		updWatermark()
+		updKeybindList()
+		updSessionStats()
+		if S.LastShotAt and S.LastShotAt > lastShotTrack then
+			lastShotTrack = S.LastShotAt
+			session.shots += 1
+		end
 	end)
 
 	local specAt = 0
+	local lastShotTrack = 0
 	RS.Heartbeat:Connect(function()
 		if tick() - specAt < 0.45 then
 			return

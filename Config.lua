@@ -127,6 +127,12 @@ function Config.EnforceRules(S)
 	if typeof(S.FriendIds) ~= "table" then
 		S.FriendIds = {}
 	end
+	if S.HitSound == nil then
+		S.HitSound = true
+	end
+	if S.HitSoundVolume == nil then
+		S.HitSoundVolume = 0.45
+	end
 	if S.ChamsRainbow then
 		S.LoS = false
 		S.RealTeamColor = false

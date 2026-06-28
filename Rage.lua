@@ -14,6 +14,8 @@ function Rage.Init(S, ParentGUI, TF)
 	local lastRageShot = 0
 	local lastRageToggle = 0
 	local rageToggled = false
+	local rageLock = nil
+	local rageLockUntil = 0
 	local botList = {}
 	local botScanAt = 0
 	local savedAutoRotate = true
@@ -339,6 +341,26 @@ function Rage.Init(S, ParentGUI, TF)
 		return best
 	end
 
+	local function getStableRageTarget()
+		if rageLock and tick() < rageLockUntil then
+			local char = rageLock.char
+			if char and isAliveChar(char) then
+				local part = getRageAimPart(char) or rageLock.part
+				if part and part.Parent and isPartVisibleFromCamera(part, char) then
+					local dist3d = worldDist(part)
+					if dist3d <= (S.RageMaxDist or S.MaxDist) then
+						rageLock.part = part
+						rageLock.score = dist3d
+						return rageLock
+					end
+				end
+			end
+		end
+		rageLock = getBestRageTarget()
+		rageLockUntil = tick() + 0.45
+		return rageLock
+	end
+
 	local function rotateCharacterTo(targetPos)
 		local char = LP.Character
 		local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -377,8 +399,9 @@ function Rage.Init(S, ParentGUI, TF)
 			return
 		end
 
-		local tgt = getBestRageTarget()
+		local tgt = getStableRageTarget()
 		if not tgt or not tgt.part then
+			rageLock = nil
 			return
 		end
 
