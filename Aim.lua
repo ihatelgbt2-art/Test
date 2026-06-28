@@ -365,7 +365,10 @@ function Aim.Init(S, ParentGUI)
 		if S.Silent then
 			local saved = Cam.CFrame
 			Cam.CFrame = CFrame.new(saved.Position, targetPos)
-			RS.RenderStepped:Wait()
+			local frames = math.clamp(S.SilentFrames or 3, 1, 8)
+			for _ = 1, frames do
+				RS.RenderStepped:Wait()
+			end
 			fireClick()
 			RS.RenderStepped:Wait()
 			Cam.CFrame = saved

@@ -17,6 +17,8 @@ function UI.Init(S, ParentGUI, ConfigModule)
 	local W_FULL, W_COMPACT, H = 720, 520, 500
 	local RS = game:GetService("RunService")
 
+	ParentGUI.DisplayOrder = 100
+
 	local function refreshLayout()
 		local vp = Cam.ViewportSize
 		W_FULL = math.clamp(math.floor(vp.X * 0.54), 600, 780)
@@ -1434,15 +1436,20 @@ function UI.Init(S, ParentGUI, ConfigModule)
 	MakeSection(T3, "AIMBOT", 1)
 	MakeTog(T3, "Aimbot (hold RMB)", "Aimbot", 2)
 	MakeTog(T3, "Silent Aim (flick)", "Silent", 3)
-	MakeHint(T3, "Aimbot i Silent wykluczają się — włączenie jednego wyłącza drugie.", 4)
-	MakeHint(T3, "Przy kliknięciu LPM kamera na 1 klatkę celuje w target — bez ruszania widoku na stałe.", 5)
-	MakeTog(T3, "Triggerbot", "Trigger", 6)
+	MakeSlider(T3, "Silent Aim Delay", "SilentFrames", 1, 8, 4, {
+		suffix = " fr",
+		step = 1,
+		fmt = function(v) return math.floor(v) .. " frames" end,
+	})
+	MakeHint(T3, "Aimbot i Silent wykluczają się — włączenie jednego wyłącza drugie.", 5)
+	MakeHint(T3, "Silent: najpierw celuje kamerę, potem strzela (więcej frames = wolniejsze gry).", 6)
+	MakeTog(T3, "Triggerbot", "Trigger", 7)
 	MakeChoice(T3, "Trigger Mode", "TriggerMode", {
 		{ label = "Hold", value = "Hold" },
 		{ label = "Toggle", value = "Toggle" },
-	}, 7)
-	MakeBind(T3, "Trigger Key", "TriggerKey", 8)
-	MakeSlider(T3, "Trigger Delay", "TriggerDelay", 1, 500, 9, { suffix = "ms", step = 1 })
+	}, 8)
+	MakeBind(T3, "Trigger Key", "TriggerKey", 9)
+	MakeSlider(T3, "Trigger Delay", "TriggerDelay", 1, 500, 10, { suffix = "ms", step = 1 })
 	MakeTog(T3, "Trigger Status HUD", "ShowTriggerHud", 10)
 	MakeTog(T3, "Minimal Trigger HUD", "TriggerHudMinimal", 11)
 	MakeHint(T3, "Włączone = mała kropka po prawej (jasna = aktywny, szara = czeka). Wyłączone = pełna etykieta tekstowa.", 12)

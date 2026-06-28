@@ -20,10 +20,14 @@ local UI       = Get("UI.lua")
 local CG = pcall(function() return game:GetService("CoreGui").Name end) and game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 pcall(function() CG.VanguardESP:Destroy() end)
 
+pcall(function() CG.VanguardHUD:Destroy() end)
+
 local GUI = Instance.new("ScreenGui")
 GUI.Name = "VanguardESP"
 GUI.IgnoreGuiInset = true
 GUI.ResetOnSpawn = false
+GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+GUI.DisplayOrder = 10
 GUI.Parent = CG
 
 -- Start
