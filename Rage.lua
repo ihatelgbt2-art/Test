@@ -50,9 +50,9 @@ function Rage.Init(S, ParentGUI, TF)
 		params.FilterDescendantsInstances = LP.Character and { LP.Character } or {}
 		local hit = workspace:Raycast(origin, dir, params)
 		if not hit then
-			return false
+			return true
 		end
-		if hit.Instance == part or hit.Instance:IsDescendantOf(part) then
+		if hit.Instance == part or hit.Instance:IsDescendantOf(char) then
 			return true
 		end
 		return false
@@ -272,8 +272,17 @@ function Rage.Init(S, ParentGUI, TF)
 
 	local function getRageAimPart(char)
 		if S.RageHitPart == "Head" then
-			local p = char:FindFirstChild("Head")
-			return isPartVisibleFromCamera(p, char) and p or nil
+			local head = char:FindFirstChild("Head")
+			if head and isPartVisibleFromCamera(head, char) then
+				return head
+			end
+			for _, name in ipairs(AIM_PARTS) do
+				local p = char:FindFirstChild(name)
+				if p and isPartVisibleFromCamera(p, char) then
+					return p
+				end
+			end
+			return nil
 		elseif S.RageHitPart == "Torso" then
 			for _, name in ipairs({ "UpperTorso", "Torso", "HumanoidRootPart" }) do
 				local p = char:FindFirstChild(name)
@@ -341,22 +350,67 @@ function Rage.Init(S, ParentGUI, TF)
 		return best
 	end
 
+	local function getCrosshairRageTarget()
+		if S.RageCrosshair == false then
+			return nil
+		end
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = LP.Character and { LP.Character } or {}
+		local ray = Cam:ViewportPointToRay(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
+		local maxDist = S.RageMaxDist or S.MaxDist or 500
+		local hit = workspace:Raycast(ray.Origin, ray.Direction * maxDist, params)
+		if not hit or not hit.Instance then
+			return nil
+		end
+		local model = hit.Instance:FindFirstAncestorOfClass("Model")
+		if not model or not isAliveChar(model) then
+			return nil
+		end
+		if LP.Character and model == LP.Character then
+			return nil
+		end
+		local plr = Players:GetPlayerFromCharacter(model)
+		if plr then
+			if not isEnemyPlayer(plr) then
+				return nil
+			end
+		elseif not S.RageBots then
+			return nil
+		end
+		local part = hit.Instance:IsA("BasePart") and hit.Instance or getRageAimPart(model)
+		if not part then
+			return nil
+		end
+		local dist3d = worldDist(part)
+		if dist3d > maxDist then
+			return nil
+		end
+		return { part = part, char = model, plr = plr, score = dist3d }
+	end
+
 	local function getStableRageTarget()
 		if rageLock and tick() < rageLockUntil then
 			local char = rageLock.char
 			if char and isAliveChar(char) then
 				local part = getRageAimPart(char) or rageLock.part
-				if part and part.Parent and isPartVisibleFromCamera(part, char) then
-					local dist3d = worldDist(part)
-					if dist3d <= (S.RageMaxDist or S.MaxDist) then
-						rageLock.part = part
-						rageLock.score = dist3d
-						return rageLock
+				if part and part.Parent and part:IsDescendantOf(char) then
+					local visible = not S.RageVisibleCheck or isPartVisibleFromCamera(part, char)
+					if visible then
+						local dist3d = worldDist(part)
+						if dist3d <= (S.RageMaxDist or S.MaxDist) then
+							rageLock.part = part
+							rageLock.score = dist3d
+							return rageLock
+						end
 					end
 				end
 			end
 		end
 		rageLock = getBestRageTarget()
+		if not rageLock then
+			rageLock = getCrosshairRageTarget()
+		end
 		rageLockUntil = tick() + 0.45
 		return rageLock
 	end
@@ -413,7 +467,11 @@ function Rage.Init(S, ParentGUI, TF)
 
 		rageShootingUntil = tick() + 0.1
 		rotateCharacterTo(tgt.part.Position)
-		rageSilentShot(tgt.part.Position)
+		if S.RageSilent ~= false then
+			rageSilentShot(tgt.part.Position)
+		else
+			fireClick()
+		end
 	end
 
 	local function restoreAntiAim()
@@ -494,9 +552,7 @@ function Rage.Init(S, ParentGUI, TF)
 		else
 			restoreAntiAim()
 		end
-	end)
 
-	RS.Heartbeat:Connect(function()
 		if S.MenuOpen then
 			return
 		end

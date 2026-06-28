@@ -133,6 +133,15 @@ function Config.EnforceRules(S)
 	if S.HitSoundVolume == nil then
 		S.HitSoundVolume = 0.45
 	end
+	if S.RageSilent == nil then
+		S.RageSilent = true
+	end
+	if S.RageCrosshair == nil then
+		S.RageCrosshair = true
+	end
+	if S.AutoStrafe == nil then
+		S.AutoStrafe = false
+	end
 	if S.ChamsRainbow then
 		S.LoS = false
 		S.RealTeamColor = false

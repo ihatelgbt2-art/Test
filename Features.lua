@@ -95,49 +95,201 @@ function Features.Init(S, _ParentGUI)
 		C("UIStroke", { Color = Color3.fromRGB(0, 0, 0), Thickness = 1, Transparency = 0.4, Parent = ln })
 	end
 
+	local HIT_SOUND_IDS = { 4868633804, 7147454322, 6026984224, 12222039 }
+	local hitSoundIdx = 1
 	local HitSound = C("Sound", {
 		Name = "HitSound",
-		SoundId = "rbxassetid://9114481067",
+		SoundId = "rbxassetid://" .. HIT_SOUND_IDS[1],
 		Volume = 0.45,
 		Parent = HudGui,
 	})
+	task.spawn(function()
+		for i, id in ipairs(HIT_SOUND_IDS) do
+			HitSound.SoundId = "rbxassetid://" .. id
+			local deadline = tick() + 2.5
+			while not HitSound.IsLoaded and tick() < deadline do
+				task.wait(0.08)
+			end
+			if HitSound.IsLoaded then
+				hitSoundIdx = i
+				break
+			end
+		end
+	end)
 
 	local session = { kills = 0, hits = 0, shots = 0, start = tick() }
+	local wmShown = false
+	local wmPulse = 0
+	local fpsSmoothed = 60
+	local fpsLast = tick()
+	local fpsFrames = 0
+	local statDisplay = { kills = 0, hits = 0, acc = 0 }
 
 	local Watermark = tagZ(C("Frame", {
 		Name = "Watermark",
-		Size = UDim2.new(0, 168, 0, 42),
+		Size = UDim2.new(0, 220, 0, 48),
 		Position = UDim2.new(0, 14, 0, 12),
-		BackgroundColor3 = PANEL_BG,
-		BackgroundTransparency = 0.12,
+		BackgroundColor3 = Color3.fromRGB(16, 16, 22),
+		BackgroundTransparency = 0.08,
 		BorderSizePixel = 0,
 		Visible = false,
 		Parent = HudGui,
 	}), Z.wm)
-	C("UICorner", { CornerRadius = UDim.new(0, 8), Parent = Watermark })
-	C("UIStroke", { Color = ACC, Thickness = 1, Transparency = 0.55, Parent = Watermark })
+	C("UICorner", { CornerRadius = UDim.new(0, 10), Parent = Watermark })
+	local WmStroke = C("UIStroke", { Color = ACC, Thickness = 1, Transparency = 0.62, Parent = Watermark })
+	local WmAccent = tagZ(C("Frame", {
+		Size = UDim2.new(1, 0, 0, 2),
+		BackgroundColor3 = ACC,
+		BorderSizePixel = 0,
+		Parent = Watermark,
+	}), Z.wm + 1)
+	C("UICorner", { CornerRadius = UDim.new(0, 10), Parent = WmAccent })
+	local WmShimmer = tagZ(C("Frame", {
+		Size = UDim2.new(0, 56, 1, 0),
+		Position = UDim2.new(-0.35, 0, 0, 0),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.72,
+		BorderSizePixel = 0,
+		Parent = WmAccent,
+	}), Z.wm + 2)
+	C("UIGradient", {
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.5, 0),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Parent = WmShimmer,
+	})
+	tagZ(C("Frame", {
+		Name = "WmLogoBox",
+		Size = UDim2.new(0, 28, 0, 28),
+		Position = UDim2.new(0, 10, 0, 12),
+		BackgroundColor3 = ACC,
+		BackgroundTransparency = 0.15,
+		BorderSizePixel = 0,
+		Parent = Watermark,
+	}), Z.wm + 1)
+	local wmLogoBox = Watermark:FindFirstChild("WmLogoBox")
+	if wmLogoBox then
+		C("UICorner", { CornerRadius = UDim.new(0, 7), Parent = wmLogoBox })
+	end
+	local WmLogo = tagZ(C("TextLabel", {
+		Size = UDim2.new(0, 28, 0, 28),
+		Position = UDim2.new(0, 10, 0, 12),
+		BackgroundTransparency = 1,
+		Text = "V",
+		Font = Enum.Font.GothamBlack,
+		TextSize = 16,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		Parent = Watermark,
+	}), Z.wm + 2)
 	tagZ(C("TextLabel", {
-		Size = UDim2.new(1, -16, 0, 16),
-		Position = UDim2.new(0, 10, 0, 8),
+		Size = UDim2.new(1, -52, 0, 16),
+		Position = UDim2.new(0, 46, 0, 10),
 		BackgroundTransparency = 1,
 		Text = "VANGUARD",
 		Font = Enum.Font.GothamBlack,
-		TextSize = 12,
-		TextColor3 = Color3.fromRGB(240, 240, 245),
+		TextSize = 13,
+		TextColor3 = Color3.fromRGB(245, 245, 250),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = Watermark,
 	}), Z.wm + 1)
 	local WmSub = tagZ(C("TextLabel", {
-		Size = UDim2.new(1, -16, 0, 12),
-		Position = UDim2.new(0, 10, 0, 24),
+		Size = UDim2.new(1, -52, 0, 12),
+		Position = UDim2.new(0, 46, 0, 28),
 		BackgroundTransparency = 1,
-		Text = "v?",
+		Text = "v? · 60 FPS",
 		Font = Enum.Font.GothamMedium,
 		TextSize = 10,
-		TextColor3 = ACC,
+		TextColor3 = Color3.fromRGB(150, 155, 170),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = Watermark,
 	}), Z.wm + 1)
+
+	local StatsPanel = tagZ(C("Frame", {
+		Name = "SessionStats",
+		Size = UDim2.new(0, 196, 0, 132),
+		Position = UDim2.new(1, -210, 0, 12),
+		BackgroundColor3 = Color3.fromRGB(16, 16, 22),
+		BackgroundTransparency = 0.08,
+		BorderSizePixel = 0,
+		Visible = false,
+		Parent = HudGui,
+	}), Z.stats)
+	C("UICorner", { CornerRadius = UDim.new(0, 10), Parent = StatsPanel })
+	local StatsStroke = C("UIStroke", { Color = ACC, Thickness = 1, Transparency = 0.62, Parent = StatsPanel })
+	tagZ(C("Frame", {
+		Size = UDim2.new(1, 0, 0, 2),
+		BackgroundColor3 = ACC,
+		BorderSizePixel = 0,
+		Parent = StatsPanel,
+	}), Z.stats + 1)
+	tagZ(C("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 14),
+		Position = UDim2.new(0, 12, 0, 10),
+		BackgroundTransparency = 1,
+		Text = "SESSION",
+		Font = Enum.Font.GothamBlack,
+		TextSize = 10,
+		TextColor3 = Color3.fromRGB(235, 235, 242),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = StatsPanel,
+	}), Z.stats + 1)
+	tagZ(C("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 10),
+		Position = UDim2.new(0, 12, 0, 24),
+		BackgroundTransparency = 1,
+		Text = "LIVE STATS",
+		Font = Enum.Font.GothamMedium,
+		TextSize = 8,
+		TextColor3 = Color3.fromRGB(120, 125, 140),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = StatsPanel,
+	}), Z.stats + 1)
+	local StatsLines = {}
+	local StatValues = {}
+	for i, key in ipairs({ "Kills", "Hits", "Accuracy", "Time" }) do
+		local rowY = 38 + (i - 1) * 22
+		tagZ(C("TextLabel", {
+			Size = UDim2.new(0.55, 0, 0, 14),
+			Position = UDim2.new(0, 12, 0, rowY),
+			BackgroundTransparency = 1,
+			Text = key,
+			Font = Enum.Font.GothamMedium,
+			TextSize = 10,
+			TextColor3 = Color3.fromRGB(145, 148, 162),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = StatsPanel,
+		}), Z.stats + 1)
+		local val = tagZ(C("TextLabel", {
+			Size = UDim2.new(0.4, -12, 0, 14),
+			Position = UDim2.new(0.6, 0, 0, rowY),
+			BackgroundTransparency = 1,
+			Text = "—",
+			Font = Enum.Font.GothamBold,
+			TextSize = 11,
+			TextColor3 = ACC,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Parent = StatsPanel,
+		}), Z.stats + 1)
+		StatsLines[key] = val
+		StatValues[key] = val
+	end
+	local AccBarBg = tagZ(C("Frame", {
+		Size = UDim2.new(1, -24, 0, 4),
+		Position = UDim2.new(0, 12, 0, 104),
+		BackgroundColor3 = Color3.fromRGB(38, 38, 48),
+		BorderSizePixel = 0,
+		Parent = StatsPanel,
+	}), Z.stats + 1)
+	C("UICorner", { CornerRadius = UDim.new(1, 0), Parent = AccBarBg })
+	local AccBarFill = tagZ(C("Frame", {
+		Size = UDim2.new(0, 0, 1, 0),
+		BackgroundColor3 = ACC,
+		BorderSizePixel = 0,
+		Parent = AccBarBg,
+	}), Z.stats + 2)
+	C("UICorner", { CornerRadius = UDim.new(1, 0), Parent = AccBarFill })
 
 	local KeybindPanel = tagZ(C("Frame", {
 		Name = "KeybindList",
@@ -180,45 +332,6 @@ function Features.Init(S, _ParentGUI)
 		Parent = KeybindPanel,
 	})
 	C("UIListLayout", { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder, Parent = KeybindBody })
-
-	local StatsPanel = tagZ(C("Frame", {
-		Name = "SessionStats",
-		Size = UDim2.new(0, 132, 0, 88),
-		Position = UDim2.new(1, -146, 0, 12),
-		BackgroundColor3 = PANEL_BG,
-		BackgroundTransparency = 0.12,
-		BorderSizePixel = 0,
-		Visible = false,
-		Parent = HudGui,
-	}), Z.stats)
-	C("UICorner", { CornerRadius = UDim.new(0, 8), Parent = StatsPanel })
-	C("UIStroke", { Color = ACC, Thickness = 1, Transparency = 0.55, Parent = StatsPanel })
-	tagZ(C("TextLabel", {
-		Size = UDim2.new(1, -16, 0, 12),
-		Position = UDim2.new(0, 10, 0, 8),
-		BackgroundTransparency = 1,
-		Text = "SESSION",
-		Font = Enum.Font.GothamBold,
-		TextSize = 9,
-		TextColor3 = Color3.fromRGB(150, 150, 162),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Parent = StatsPanel,
-	}), Z.stats + 1)
-	local StatsLines = {}
-	for i, key in ipairs({ "Kills", "Hits", "Accuracy", "Time" }) do
-		local row = tagZ(C("TextLabel", {
-			Size = UDim2.new(1, -16, 0, 14),
-			Position = UDim2.new(0, 10, 0, 22 + (i - 1) * 16),
-			BackgroundTransparency = 1,
-			Text = key .. "  —",
-			Font = Enum.Font.GothamMedium,
-			TextSize = 10,
-			TextColor3 = Color3.fromRGB(210, 210, 218),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = StatsPanel,
-		}), Z.stats + 1)
-		StatsLines[key] = row
-	end
 
 	local KillFeedPanel = tagZ(C("Frame", {
 		Name = "KillFeed",
@@ -489,9 +602,30 @@ function Features.Init(S, _ParentGUI)
 			return
 		end
 		HitSound.Volume = math.clamp(S.HitSoundVolume or 0.45, 0.05, 1)
+		if not HitSound.IsLoaded then
+			HitSound.SoundId = "rbxassetid://" .. HIT_SOUND_IDS[hitSoundIdx]
+		end
+		HitSound.TimePosition = 0
+		local played = false
 		pcall(function()
 			HitSound:Play()
+			played = HitSound.IsPlaying
 		end)
+		if played then
+			return
+		end
+		for i, id in ipairs(HIT_SOUND_IDS) do
+			if i ~= hitSoundIdx then
+				HitSound.SoundId = "rbxassetid://" .. id
+				local ok = pcall(function()
+					HitSound:Play()
+				end)
+				if ok and HitSound.IsPlaying then
+					hitSoundIdx = i
+					break
+				end
+			end
+		end
 	end
 
 	local function formatSessionTime()
@@ -501,6 +635,16 @@ function Features.Init(S, _ParentGUI)
 		return string.format("%02d:%02d", m, s)
 	end
 
+	local function bumpStatLabel(key, text)
+		local lbl = StatsLines[key]
+		if not lbl then
+			return
+		end
+		lbl.Text = text
+		lbl.TextSize = 13
+		Tween(lbl, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextSize = 11 })
+	end
+
 	local function updSessionStats()
 		if not S.SessionStats or S.MenuOpen then
 			StatsPanel.Visible = false
@@ -508,10 +652,30 @@ function Features.Init(S, _ParentGUI)
 		end
 		StatsPanel.Visible = true
 		local acc = session.shots > 0 and math.floor(session.hits / session.shots * 100) or 0
-		StatsLines.Kills.Text = "Kills  " .. tostring(session.kills)
-		StatsLines.Hits.Text = "Hits  " .. tostring(session.hits)
-		StatsLines.Accuracy.Text = "Accuracy  " .. acc .. "%"
-		StatsLines.Time.Text = "Time  " .. formatSessionTime()
+		if statDisplay.kills ~= session.kills then
+			statDisplay.kills = session.kills
+			bumpStatLabel("Kills", tostring(session.kills))
+		else
+			StatsLines.Kills.Text = tostring(session.kills)
+		end
+		if statDisplay.hits ~= session.hits then
+			statDisplay.hits = session.hits
+			bumpStatLabel("Hits", tostring(session.hits))
+		else
+			StatsLines.Hits.Text = tostring(session.hits)
+		end
+		if statDisplay.acc ~= acc then
+			statDisplay.acc = acc
+			bumpStatLabel("Accuracy", acc .. "%")
+		else
+			StatsLines.Accuracy.Text = acc .. "%"
+		end
+		StatsLines.Time.Text = formatSessionTime()
+		Tween(AccBarFill, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(math.clamp(acc / 100, 0, 1), 0, 1, 0),
+		})
+		local pulse = 0.58 + math.sin(tick() * 2.2) * 0.08
+		StatsStroke.Transparency = pulse
 	end
 
 	local function addKillFeed(name)
@@ -642,9 +806,17 @@ function Features.Init(S, _ParentGUI)
 	local function updWatermark()
 		if not S.Watermark or S.MenuOpen then
 			Watermark.Visible = false
+			wmShown = false
 			return
 		end
-		WmSub.Text = "v" .. (S.Version or "?")
+		if not wmShown then
+			wmShown = true
+			Watermark.Position = UDim2.new(0, -240, 0, 12)
+			Tween(Watermark, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Position = UDim2.new(0, 14, 0, 12),
+			})
+		end
+		WmSub.Text = "v" .. (S.Version or "?") .. "  ·  " .. math.floor(fpsSmoothed + 0.5) .. " FPS"
 		Watermark.Visible = true
 	end
 
@@ -1014,6 +1186,20 @@ function Features.Init(S, _ParentGUI)
 			local sz = math.clamp(S.CrosshairSize or 5, 2, 12)
 			Cross.Size = UDim2.new(0, sz, 0, sz)
 			Cross.BackgroundColor3 = ACC
+		end
+		fpsFrames += 1
+		local now = tick()
+		if now - fpsLast >= 0.5 then
+			fpsSmoothed = fpsSmoothed * 0.65 + (fpsFrames / (now - fpsLast)) * 0.35
+			fpsFrames = 0
+			fpsLast = now
+		end
+		if S.Watermark and not S.MenuOpen then
+			wmPulse += 0.03
+			local glow = 0.58 + math.sin(wmPulse) * 0.1
+			WmStroke.Transparency = glow
+			WmShimmer.Position = UDim2.new((wmPulse * 0.18) % 1.35 - 0.35, 0, 0, 0)
+			WmLogo.TextColor3 = Color3.fromRGB(255, 255, 255):Lerp(ACC, 0.15 + math.sin(wmPulse * 1.4) * 0.15)
 		end
 		updWatermark()
 		updKeybindList()

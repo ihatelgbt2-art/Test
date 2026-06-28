@@ -1607,18 +1607,20 @@ function UI.Init(S, ParentGUI, ConfigModule, TF)
 	MakeSlider(RBot, "Rage Delay", "RageDelay", 1, 500, 4, { suffix = "ms", step = 1 })
 	MakeTog(RBot, "Rage Status HUD", "ShowRageHud", 5, { flat = true })
 	MakeTog(RBot, "Minimal Rage HUD", "RageHudMinimal", 6, { flat = true })
+	MakeTog(RBot, "Silent Aim (camera snap)", "RageSilent", 7, { flat = true })
 
 	local RTarget = MakeCard(TR, "TARGETING", nil, 4)
 	MakeTog(RTarget, "Exclude Teammates & Friends", "ExcludeTeam", 1, { flat = true })
 	MakeTog(RTarget, "Visible Check", "RageVisibleCheck", 2, { flat = true })
-	MakeTog(RTarget, "Target Bots", "RageBots", 3, { flat = true })
+	MakeTog(RTarget, "Crosshair Fallback", "RageCrosshair", 3, { flat = true })
+	MakeTog(RTarget, "Target Bots", "RageBots", 4, { flat = true })
 	MakeChoice(RTarget, "Hit Part", "RageHitPart", {
 		{ label = "Head", value = "Head" },
 		{ label = "Torso", value = "Torso" },
 		{ label = "Random", value = "Random" },
 		{ label = "Closest", value = "Closest" },
-	}, 4)
-	MakeSlider(RTarget, "Max Distance", "RageMaxDist", 50, 1500, 5, { suffix = "m", step = 25 })
+	}, 5)
+	MakeSlider(RTarget, "Max Distance", "RageMaxDist", 50, 1500, 6, { suffix = "m", step = 25 })
 
 	local SFriend = MakeCard(T2, "FRIENDS", "Ctrl + Click na gracza — dodaj / usuń z wykluczeń.", 1)
 	MakeTog(SFriend, "Ctrl + Click Friend", "FriendClick", 1, { flat = true })
@@ -1758,8 +1760,9 @@ function UI.Init(S, ParentGUI, ConfigModule, TF)
 		TF.Init(S, ParentGUI, ACC, refreshFriendList)
 	end
 
-	local SMov = MakeCard(T2, "MOVEMENT", nil, 2)
+	local SMov = MakeCard(T2, "MOVEMENT", "Auto Strafe działa w powietrzu (razem z BHop).", 2)
 	MakeTog(SMov, "Bunny Hop", "BHop", 1, { flat = true })
+	MakeTog(SMov, "Auto Strafe", "AutoStrafe", 2, { flat = true })
 
 	local SFilt = MakeCard(T2, "ESP COLORS", "Team Colors / LoS — wykluczają się.", 3)
 	MakeTog(SFilt, "Team Colors", "RealTeamColor", 1, { flat = true })

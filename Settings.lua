@@ -1,7 +1,7 @@
 -- Plik: workspace/Vanguard/Settings.lua
 
 local Settings = {
-	Version = "2.7.1",
+	Version = "2.8.0",
 	-- ESP
 	ESP = false,
 	Box = false,
@@ -62,9 +62,12 @@ local Settings = {
 	RageVisibleCheck = true,
 	RageBots = true,
 	RageMaxDist = 500,
+	RageSilent = true,
+	RageCrosshair = true,
 
 	-- MOVEMENT
 	BHop = false,
+	AutoStrafe = false,
 
 	-- HUD
 	Crosshair = false,
