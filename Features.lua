@@ -1113,6 +1113,9 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 			local hum = rayHum()
 			if hum then
 				S.LastShotHum = hum
+				if hum.Parent and hum.Parent:IsA("Model") then
+					S.LastShotChar = hum.Parent
+				end
 			end
 		end
 	end)

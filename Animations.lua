@@ -3,6 +3,10 @@
 local Animations = {}
 
 Animations.LIST = {
+	{ label = "Twerk", procedural = "twerk", chat = "dance3", ids = { 179224234, 1071434050, 182436935 } },
+	{ label = "Floss", procedural = "floss", ids = { 1071434727, 182436842, 5917570207 } },
+	{ label = "Griddy", procedural = "griddy" },
+	{ label = "Spin", procedural = "spin" },
 	{ label = "Dance", chat = "dance", folders = { "dance", "dance2", "dance3" }, ids = { 507771019, 507776879, 507777623, 507771955, 507772104 } },
 	{ label = "Dance 2", chat = "dance2", folders = { "dance2" }, ids = { 507776879, 507776043, 507776720 } },
 	{ label = "Dance 3", chat = "dance3", folders = { "dance3" }, ids = { 507777623, 507777268, 507777451 } },
@@ -15,13 +19,21 @@ Animations.LIST = {
 
 function Animations.Init(S)
 	local Players = game:GetService("Players")
+	local RS = game:GetService("RunService")
 	local CP = game:GetService("ContentProvider")
 	local LP = Players.LocalPlayer
 
 	local currentTrack = nil
 	local currentAnim = nil
+	local proceduralConn = nil
+	local proceduralStop = false
 
 	local function stopCurrent()
+		proceduralStop = true
+		if proceduralConn then
+			proceduralConn:Disconnect()
+			proceduralConn = nil
+		end
 		if currentTrack then
 			pcall(function()
 				currentTrack:Stop(0.15)
@@ -62,9 +74,9 @@ function Animations.Init(S)
 				table.insert(roots, a)
 			end
 		end
-		local rs = game:GetService("ReplicatedStorage")
+		local rep = game:GetService("ReplicatedStorage")
 		for _, name in ipairs({ "Animate", "Animations", "Emotes" }) do
-			local f = rs:FindFirstChild(name, true)
+			local f = rep:FindFirstChild(name, true)
 			if f then
 				table.insert(roots, f)
 			end
@@ -84,6 +96,28 @@ function Animations.Init(S)
 					end
 				end
 			end
+		end
+		return nil
+	end
+
+	local function tryGetObjects(id)
+		local getter = game.GetObjects or (typeof(getobjects) == "function" and getobjects) or nil
+		if not getter then
+			return nil
+		end
+		local ok, objs = pcall(function()
+			return getter("rbxassetid://" .. tostring(id))
+		end)
+		if not ok or not objs or not objs[1] then
+			return nil
+		end
+		local root = objs[1]
+		if root:IsA("Animation") then
+			return root:Clone()
+		end
+		local anim = root:FindFirstChildWhichIsA("Animation", true)
+		if anim then
+			return anim:Clone()
 		end
 		return nil
 	end
@@ -112,7 +146,7 @@ function Animations.Init(S)
 		if not entry.chat then
 			return false
 		end
-		local ok = pcall(function()
+		return pcall(function()
 			local msg = "/e " .. entry.chat
 			if LP.Chat then
 				LP:Chat(msg)
@@ -124,15 +158,75 @@ function Animations.Init(S)
 				end
 			end
 		end)
-		return ok
 	end
 
 	local function playTrack(track, entry)
 		currentTrack = track
 		currentTrack.Priority = Enum.AnimationPriority.Action
-		currentTrack.Looped = entry.chat ~= "point" and entry.chat ~= "wave" and entry.chat ~= "laugh"
+		local once = entry.chat == "point" or entry.chat == "wave" or entry.chat == "laugh"
+		currentTrack.Looped = not once and entry.procedural == nil
 		currentTrack:Play(0.15, 1, 1)
 		S.LastAnim = entry.label
+	end
+
+	local function getRigParts(char)
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		local lower = char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso")
+		local upper = char:FindFirstChild("UpperTorso") or lower
+		return hrp, lower, upper
+	end
+
+	local function playProcedural(kind, entry)
+		local char = LP.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not hum or hum.Health <= 0 then
+			return false, "Brak postaci"
+		end
+		local hrp, lower, upper = getRigParts(char)
+		if not hrp then
+			return false, "Brak HRP"
+		end
+
+		proceduralStop = false
+		local baseCF = hrp.CFrame
+		local tStart = tick()
+		local savedAuto = hum.AutoRotate
+		hum.AutoRotate = false
+
+		proceduralConn = RS.RenderStepped:Connect(function()
+			if proceduralStop or not char.Parent or hum.Health <= 0 then
+				return
+			end
+			local t = tick()
+			if kind == "twerk" then
+				local w = math.sin(t * 16)
+				local pitch = w * 0.28
+				local roll = w * 0.22
+				hrp.CFrame = baseCF * CFrame.new(0, math.abs(w) * 0.06, 0) * CFrame.Angles(pitch, 0, roll)
+			elseif kind == "floss" then
+				local w = math.sin(t * 10)
+				hrp.CFrame = baseCF * CFrame.Angles(0, w * 0.65, w * 0.18)
+			elseif kind == "griddy" then
+				local w = math.sin(t * 12)
+				hrp.CFrame = baseCF * CFrame.new(w * 0.15, math.abs(math.sin(t * 8)) * 0.08, 0) * CFrame.Angles(0, w * 0.25, 0)
+			elseif kind == "spin" then
+				hrp.CFrame = baseCF * CFrame.Angles(0, (t - tStart) * 6, 0)
+			end
+		end)
+
+		S.LastAnim = entry.label .. " (procedural)"
+		Animations._stopProcedural = function()
+			proceduralStop = true
+			if proceduralConn then
+				proceduralConn:Disconnect()
+				proceduralConn = nil
+			end
+			hum.AutoRotate = savedAuto
+			if hrp and hrp.Parent then
+				hrp.CFrame = baseCF
+			end
+		end
+		return true
 	end
 
 	function Animations.Play(entry)
@@ -144,8 +238,21 @@ function Animations.Init(S)
 		if not hum then
 			return false, "Brak postaci"
 		end
-		local animator = ensureAnimator(hum)
+
 		stopCurrent()
+		if Animations._stopProcedural then
+			pcall(Animations._stopProcedural)
+			Animations._stopProcedural = nil
+		end
+
+		if entry.procedural then
+			local ok, err = playProcedural(entry.procedural, entry)
+			if ok then
+				return true
+			end
+		end
+
+		local animator = ensureAnimator(hum)
 
 		local gameAnim = findGameAnimation(entry)
 		if gameAnim then
@@ -161,6 +268,19 @@ function Animations.Init(S)
 		end
 
 		for _, id in ipairs(entry.ids or {}) do
+			local fromObjects = tryGetObjects(id)
+			if fromObjects then
+				local ok, track = pcall(function()
+					return tryLoadTrack(animator, fromObjects)
+				end)
+				if ok and track then
+					currentAnim = fromObjects
+					playTrack(track, entry)
+					return true
+				end
+				pcall(function() fromObjects:Destroy() end)
+			end
+
 			local anim = makeAnimation(id)
 			local ok, track = pcall(function()
 				return tryLoadTrack(animator, anim)
@@ -178,17 +298,27 @@ function Animations.Init(S)
 			return true
 		end
 
-		return false, "Gra blokuje animacje — użyj /e " .. (entry.chat or "?")
+		if entry.procedural then
+			return playProcedural(entry.procedural, entry)
+		end
+
+		return false, "Gra blokuje animacje — spróbuj Twerk/Griddy (procedural)"
 	end
 
 	function Animations.Stop()
 		stopCurrent()
+		if Animations._stopProcedural then
+			pcall(Animations._stopProcedural)
+			Animations._stopProcedural = nil
+		end
 		S.LastAnim = nil
 		return true
 	end
 
 	LP.CharacterAdded:Connect(function()
-		task.defer(stopCurrent)
+		task.defer(function()
+			Animations.Stop()
+		end)
 	end)
 end
 

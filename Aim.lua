@@ -403,11 +403,12 @@ function Aim.Init(S, ParentGUI, TF, Util)
 			pcall(function()
 				Util.performSilentShot(RS, Cam, VIM, job.pos, 2)
 			end)
-			S.LastShotAt = tick()
-			local hum = job.tgt.char:FindFirstChildOfClass("Humanoid")
-			if hum then
-				S.LastShotHum = hum
-			end
+		S.LastShotAt = tick()
+		local hum = job.tgt.char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			S.LastShotHum = hum
+		end
+		S.LastShotChar = job.tgt.char
 			silentBusy = false
 		end)
 	end
@@ -443,6 +444,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		lastTrigger = tick()
 		S.LastShotAt = tick()
 		S.LastShotHum = tgt.char:FindFirstChildOfClass("Humanoid")
+		S.LastShotChar = tgt.char
 		Util.fireCrosshair(VIM, Cam)
 	end
 

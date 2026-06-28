@@ -13,6 +13,7 @@ local RUNTIME_KEYS = {
 	Version = true,
 	LastShotAt = true,
 	LastShotHum = true,
+	LastShotChar = true,
 }
 
 local function canPersist()

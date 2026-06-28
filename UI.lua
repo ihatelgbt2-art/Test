@@ -1692,7 +1692,7 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule)
 			animOrder += 1
 		end
 	end
-	MakeHint(APlay, "Najpierw animacje z Animate gry, potem domyślne ID, na końcu /e chat.", animOrder)
+	MakeHint(APlay, "Twerk/Floss/Griddy/Spin = procedural (działa prawie wszędzie). Reszta = Animate gry lub /e chat.", animOrder)
 
 	local MHit = MakeCard(TM, "HITBOX EXPANDER", "Niewidoczne hitboxy — nie powiększa modelu postaci.", 1)
 	MakeTog(MHit, "Head Size", "HeadSize", 1, { flat = true })
@@ -1733,17 +1733,25 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule)
 	MakeTog(MFX, "Self Aura On Kill", "SelfKillFX", 5, { flat = true })
 	MakeButton(MFX, "Test Kill FX", 6, function()
 		if S.TestKillEffect then
-			S.TestKillEffect()
-			showNotify("Test kill effect")
+			local ok, err = S.TestKillEffect()
+			if ok == false then
+				showNotify(err or "Brak celu")
+			else
+				showNotify("Kill FX na wrogu w crosshair")
+			end
 		end
 	end)
 	MakeButton(MFX, "Test Hit FX", 7, function()
 		if S.TestHitEffect then
-			S.TestHitEffect()
-			showNotify("Test hit effect")
+			local ok, err = S.TestHitEffect()
+			if ok == false then
+				showNotify(err or "Brak celu")
+			else
+				showNotify("Hit FX na wrogu w crosshair")
+			end
 		end
 	end)
-	MakeHint(MFX, "Neon = zielony neon + fade. Burst = iskry. Ascend = unosi w górę. Shock = pierścień.", 8)
+	MakeHint(MFX, "FX tylko na wrogów których trafiasz/zabijasz. Test = cel w crosshair. Self Aura = efekt na Tobie po killu.", 8)
 
 	local SFriend = MakeCard(T2, "FRIENDS", "Ctrl + Click na gracza — dodaj / usuń z wykluczeń.", 1)
 	MakeTog(SFriend, "Ctrl + Click Friend", "FriendClick", 1, { flat = true })
