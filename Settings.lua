@@ -1,7 +1,7 @@
 -- Plik: workspace/Vanguard/Settings.lua
 
 local Settings = {
-	Version = "2.4.0",
+	Version = "2.4.1",
 	-- ESP
 	ESP = false,
 	Box = false,
@@ -41,8 +41,6 @@ local Settings = {
 	TargetMode = "FOV",
 	HitPart = "Head",
 	AimBots = true,
-	SilentFrames = 3,
-	SilentMode = "Viewport",
 
 	-- MOVEMENT
 	BHop = false,

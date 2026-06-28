@@ -351,72 +351,29 @@ function Aim.Init(S, ParentGUI)
 		Cam.CFrame = Cam.CFrame:Lerp(goal, alpha)
 	end
 
-	local function fireClickAt(pos)
-		local jx = (math.random() - 0.5) * 2
-		local jy = (math.random() - 0.5) * 2
-		local x, y = pos.X + jx, pos.Y + jy
-		VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
+	local function fireClick()
+		local loc = UIS:GetMouseLocation()
+		VIM:SendMouseButtonEvent(loc.X, loc.Y, 0, true, game, 0)
 		task.defer(function()
-			VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
+			VIM:SendMouseButtonEvent(loc.X, loc.Y, 0, false, game, 0)
 		end)
 	end
 
-	local function fireClick()
-		fireClickAt(UIS:GetMouseLocation())
-	end
-
-	local function fireAtViewport(worldPos)
-		local screenPos, onScreen = Cam:WorldToViewportPoint(worldPos)
-		if onScreen then
-			fireClickAt(Vector2.new(screenPos.X, screenPos.Y))
-			return true
-		end
-		return false
-	end
-
-	local function flickAim(targetPos)
+	local function silentShot(targetPos)
 		local saved = Cam.CFrame
 		Cam.CFrame = CFrame.new(saved.Position, targetPos)
-		local frames = math.clamp(S.SilentFrames or 3, 1, 8)
-		for _ = 1, frames do
-			RS.RenderStepped:Wait()
-		end
+		RS.RenderStepped:Wait()
+		fireClick()
 		RS.RenderStepped:Wait()
 		Cam.CFrame = saved
 	end
 
-	local function shootAt(targetPos, autoFire)
-		if not S.Silent then
-			if autoFire then
-				fireClick()
-			end
-			return
-		end
-
-		local mode = S.SilentMode or "Viewport"
-		if mode == "Viewport" then
-			if autoFire then
-				if not fireAtViewport(targetPos) then
-					flickAim(targetPos)
-					fireClick()
-				end
-			else
-				flickAim(targetPos)
-			end
-			return
-		end
-
-		local saved = Cam.CFrame
-		Cam.CFrame = CFrame.new(saved.Position, targetPos)
-		local frames = math.clamp(S.SilentFrames or 3, 1, 8)
-		for _ = 1, frames do
-			RS.RenderStepped:Wait()
-		end
-		if autoFire then
+	local function shootAt(targetPos)
+		if S.Silent then
+			silentShot(targetPos)
+		else
 			fireClick()
 		end
-		RS.RenderStepped:Wait()
-		Cam.CFrame = saved
 	end
 
 	local function tryTriggerShot()
@@ -443,7 +400,7 @@ function Aim.Init(S, ParentGUI)
 		if tgt.char then
 			S.LastShotHum = tgt.char:FindFirstChildOfClass("Humanoid")
 		end
-		shootAt(tgt.part.Position, true)
+		shootAt(tgt.part.Position)
 	end
 
 	UIS.InputBegan:Connect(function(input, processed)
@@ -468,29 +425,8 @@ function Aim.Init(S, ParentGUI)
 				if tgt.char then
 					S.LastShotHum = tgt.char:FindFirstChildOfClass("Humanoid")
 				end
-				local mode = S.SilentMode or "Viewport"
-				if mode == "Viewport" and processed then
-					fireAtViewport(tgt.part.Position)
-				else
-					shootAt(tgt.part.Position, false)
-					if processed then
-						task.defer(function()
-							if mode == "Viewport" then
-								fireAtViewport(tgt.part.Position)
-							else
-								fireClick()
-							end
-						end)
-					end
-				end
+				silentShot(tgt.part.Position)
 			end
-		end
-
-		if processed then
-			return
-		end
-		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
-			return
 		end
 	end)
 

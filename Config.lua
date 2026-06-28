@@ -109,12 +109,6 @@ function Config.EnforceRules(S)
 	if S.TriggerHudMinimal == nil then
 		S.TriggerHudMinimal = true
 	end
-	if S.SilentFrames == nil then
-		S.SilentFrames = 3
-	end
-	if S.SilentMode == nil then
-		S.SilentMode = "Viewport"
-	end
 	if S.ChamsRainbow then
 		S.LoS = false
 		S.RealTeamColor = false
