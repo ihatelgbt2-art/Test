@@ -12,6 +12,7 @@ end)
 
 local ESP      = Get("ESP.lua")
 local Aim      = Get("Aim.lua")
+local Rage     = Get("Rage.lua")
 local Movement = Get("Movement.lua")
 local Features = Get("Features.lua")
 local UI       = Get("UI.lua")
@@ -33,6 +34,7 @@ GUI.Parent = CG
 -- Start
 ESP.Init(Settings, GUI)
 Aim.Init(Settings, GUI)
+Rage.Init(Settings, GUI)
 Movement.Init(Settings)
 Features.Init(Settings, GUI)
 UI.Init(Settings, GUI, Config)

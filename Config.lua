@@ -106,6 +106,13 @@ function Config.EnforceRules(S)
 	if S.Silent and S.Aimbot then
 		S.Aimbot = false
 	end
+	if S.MasterRage then
+		S.Aimbot = false
+		S.Silent = false
+		S.Trigger = false
+	elseif S.Aimbot or S.Silent or S.Trigger then
+		S.MasterRage = false
+	end
 	if S.TriggerHudMinimal == nil then
 		S.TriggerHudMinimal = true
 	end

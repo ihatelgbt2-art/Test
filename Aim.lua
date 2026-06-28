@@ -106,7 +106,7 @@ function Aim.Init(S, ParentGUI)
 	local function updFOV()
 		local d = math.max(S.FOV * 2, 4)
 		FOVC.Size = UDim2.new(0, d, 0, d)
-		FOVC.Visible = S.ShowFOV and (S.Aimbot or S.Silent or S.Trigger)
+		FOVC.Visible = S.ShowFOV and not S.MasterRage and (S.Aimbot or S.Silent or S.Trigger)
 	end
 
 	local function isMinimalHud()
@@ -161,6 +161,26 @@ function Aim.Init(S, ParentGUI)
 		end
 	end
 
+	local function isAliveHumanoid(hum)
+		if not hum or hum.Health <= 0 then
+			return false
+		end
+		local ok, state = pcall(function()
+			return hum:GetState()
+		end)
+		if ok and state == Enum.HumanoidStateType.Dead then
+			return false
+		end
+		return true
+	end
+
+	local function isAliveChar(char)
+		if not char or not char.Parent then
+			return false
+		end
+		return isAliveHumanoid(char:FindFirstChildOfClass("Humanoid"))
+	end
+
 	local function isBotModel(model)
 		if not model:IsA("Model") then
 			return false
@@ -173,7 +193,7 @@ function Aim.Init(S, ParentGUI)
 		end
 		local hum = model:FindFirstChildOfClass("Humanoid")
 		local hrp = model:FindFirstChild("HumanoidRootPart")
-		return hum and hrp and hum.Health > 0
+		return hum and hrp and isAliveHumanoid(hum)
 	end
 
 	local function refreshBots()
@@ -247,8 +267,7 @@ function Aim.Init(S, ParentGUI)
 			return false
 		end
 		local char = plr.Character
-		local hum = char and char:FindFirstChild("Humanoid")
-		if not char or not hum or hum.Health <= 0 then
+		if not isAliveChar(char) then
 			return false
 		end
 		if S.Team and plr.Team and LP.Team and plr.Team == LP.Team then
@@ -270,7 +289,7 @@ function Aim.Init(S, ParentGUI)
 				refreshBots()
 			end
 			for _, model in ipairs(botList) do
-				if model.Parent then
+				if model.Parent and isAliveChar(model) then
 					table.insert(list, { char = model, plr = nil })
 				end
 			end
@@ -280,7 +299,7 @@ function Aim.Init(S, ParentGUI)
 
 	local function scoreTarget(entry)
 		local char = entry.char
-		if not char or not char.Parent then
+		if not isAliveChar(char) then
 			return nil
 		end
 		local part = resolveHitPart(char)
@@ -330,7 +349,7 @@ function Aim.Init(S, ParentGUI)
 		if triggerLock and tick() < triggerLockUntil then
 			local part = triggerLock.part
 			local char = triggerLock.char
-			if part and part.Parent and char and char.Parent and isVisible(part, char) then
+			if part and part.Parent and char and isAliveChar(char) and isVisible(part, char) then
 				if screenDist(part) <= math.max(S.FOV, 1) then
 					return triggerLock
 				end
@@ -377,7 +396,7 @@ function Aim.Init(S, ParentGUI)
 	end
 
 	local function tryTriggerShot()
-		if S.MenuOpen then
+		if S.MenuOpen or S.MasterRage then
 			return
 		end
 		if not triggerArmed() then
@@ -404,7 +423,7 @@ function Aim.Init(S, ParentGUI)
 	end
 
 	UIS.InputBegan:Connect(function(input, processed)
-		if S.MenuOpen then
+		if S.MenuOpen or S.MasterRage then
 			return
 		end
 
@@ -440,6 +459,10 @@ function Aim.Init(S, ParentGUI)
 		end
 
 		if S.MenuOpen then
+			return
+		end
+
+		if S.MasterRage then
 			return
 		end
 

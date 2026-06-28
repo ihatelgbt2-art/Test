@@ -926,6 +926,34 @@ function UI.Init(S, ParentGUI, ConfigModule)
 		end
 	end
 
+	local LEGIT_KEYS = { "Aimbot", "Silent", "Trigger" }
+	local LEGIT_LABELS = { Aimbot = "Aimbot", Silent = "Silent Aim", Trigger = "Triggerbot" }
+
+	local function applyRageLegitExclusivity(fromKey, turningOn)
+		if not turningOn then
+			return
+		end
+		if fromKey == "MasterRage" then
+			local off = {}
+			for _, k in ipairs(LEGIT_KEYS) do
+				if S[k] then
+					S[k] = false
+					setToggleVisual(k, false)
+					table.insert(off, LEGIT_LABELS[k])
+				end
+			end
+			if #off > 0 then
+				showNotify("Wyłączono Legit: " .. table.concat(off, ", "))
+			end
+		elseif fromKey == "Aimbot" or fromKey == "Silent" or fromKey == "Trigger" then
+			if S.MasterRage then
+				S.MasterRage = false
+				setToggleVisual("MasterRage", false)
+				showNotify("Wyłączono: Master Rage")
+			end
+		end
+	end
+
 	local function isLockedMouseBehavior(behavior)
 		return behavior == Enum.MouseBehavior.LockCenter
 			or behavior == Enum.MouseBehavior.LockCurrentPosition
@@ -1088,6 +1116,7 @@ function UI.Init(S, ParentGUI, ConfigModule)
 			if enabled then
 				applyEspColorExclusivity(key, true)
 				applyAimExclusivity(key, true)
+				applyRageLegitExclusivity(key, true)
 			end
 
 			setToggleVisual(key, enabled)
@@ -1406,9 +1435,10 @@ function UI.Init(S, ParentGUI, ConfigModule)
 	end
 
 	local T1 = MakeTab("Visuals", true, true, 1)
-	local T3 = MakeTab("Aim", false, false, 2)
-	local T2 = MakeTab("Settings", false, false, 3)
-	local T4 = MakeTab("Config", false, false, 4)
+	local T3 = MakeTab("Legit", false, false, 2)
+	local TR = MakeTab("Rage", false, false, 3)
+	local T2 = MakeTab("Settings", false, false, 4)
+	local T4 = MakeTab("Config", false, false, 5)
 
 	MakeSection(T1, "CORE", 1)
 	MakeTog(T1, "Master ESP", "ESP", 2)
@@ -1473,6 +1503,45 @@ function UI.Init(S, ParentGUI, ConfigModule)
 	})
 	MakeTog(T3, "Aim Curve + Jitter", "AimCurve", 23)
 	MakeHint(T3, "Smoothing działa tylko z Aimbot (RMB). Silent nie używa smoothingu.", 24)
+	MakeHint(T3, "Master Rage (zakładka Rage) wyłącza wszystkie funkcje Legit.", 25)
+
+	MakeSection(TR, "MASTER", 1)
+	MakeTog(TR, "Master Rage", "MasterRage", 2)
+	MakeHint(TR, "Włączenie Master Rage wyłącza Aimbot, Silent i Triggerbot. Nie działają razem.", 3)
+	MakeSection(TR, "ANTI-AIM", 4)
+	MakeTog(TR, "Anti-Aim", "AntiAim", 5)
+	MakeTog(TR, "Spin", "AASpin", 6)
+	MakeSlider(TR, "Spin Speed", "AASpinSpeed", 1, 20, 7, { suffix = "", step = 1 })
+	MakeSlider(TR, "Yaw Offset", "AAYaw", -180, 180, 8, { suffix = "°", step = 5 })
+	MakeSlider(TR, "Pitch Offset", "AAPitch", -89, 89, 9, { suffix = "°", step = 5 })
+	MakeTog(TR, "Yaw Jitter", "AAJitter", 10)
+	MakeSlider(TR, "Jitter Range", "AAJitterRange", 5, 180, 11, { suffix = "°", step = 5 })
+	MakeHint(TR, "Anti-aim obraca postać od kamery + offsety. Spin = ciągła rotacja yaw.", 12)
+	MakeSection(TR, "RAGEBOT", 13)
+	MakeTog(TR, "Ragebot", "RageBot", 14)
+	MakeChoice(TR, "Rage Mode", "RageMode", {
+		{ label = "Hold", value = "Hold" },
+		{ label = "Toggle", value = "Toggle" },
+	}, 15)
+	MakeBind(TR, "Rage Key", "RageKey", 16)
+	MakeSlider(TR, "Rage Delay", "RageDelay", 1, 500, 17, { suffix = "ms", step = 1 })
+	MakeTog(TR, "Rage Status HUD", "ShowRageHud", 18)
+	MakeTog(TR, "Minimal Rage HUD", "RageHudMinimal", 19)
+	MakeHint(TR, "Ragebot skanuje 360° bez FOV. Widoczny cel → obrót postaci + silent aim.", 20)
+	MakeHint(TR, "Hold = strzela gdy trzymasz klawisz. Toggle = ON/OFF klawiszem.", 21)
+	MakeSection(TR, "TARGETING", 22)
+	MakeTog(TR, "Visible Check", "RageVisibleCheck", 23)
+	MakeTog(TR, "Target Bots", "RageBots", 24)
+	MakeChoice(TR, "Hit Part", "RageHitPart", {
+		{ label = "Head", value = "Head" },
+		{ label = "Torso", value = "Torso" },
+		{ label = "Random", value = "Random" },
+		{ label = "Closest", value = "Closest" },
+	}, 25)
+	MakeSlider(TR, "Max Distance", "RageMaxDist", 50, 1500, 26, { suffix = "m", step = 25 })
+	MakeSection(TR, "CAMERA", 27)
+	MakeTog(TR, "Force Third Person", "RageThirdPerson", 28)
+	MakeHint(TR, "Third person do podglądu anti-aim. Przywraca poprzedni tryb kamery po wyłączeniu.", 29)
 
 	MakeSection(T2, "MOVEMENT", 1)
 	MakeTog(T2, "Bunny Hop", "BHop", 2)

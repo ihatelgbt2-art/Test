@@ -1,7 +1,7 @@
 -- Plik: workspace/Vanguard/Settings.lua
 
 local Settings = {
-	Version = "2.4.1",
+	Version = "2.5.0",
 	-- ESP
 	ESP = false,
 	Box = false,
@@ -41,6 +41,27 @@ local Settings = {
 	TargetMode = "FOV",
 	HitPart = "Head",
 	AimBots = true,
+
+	-- RAGE
+	MasterRage = false,
+	AntiAim = false,
+	AASpin = true,
+	AASpinSpeed = 8,
+	AAYaw = 0,
+	AAPitch = 0,
+	AAJitter = false,
+	AAJitterRange = 45,
+	RageBot = false,
+	RageKey = "C",
+	RageMode = "Toggle",
+	RageDelay = 80,
+	ShowRageHud = true,
+	RageHudMinimal = true,
+	RageThirdPerson = false,
+	RageHitPart = "Head",
+	RageVisibleCheck = true,
+	RageBots = true,
+	RageMaxDist = 500,
 
 	-- MOVEMENT
 	BHop = false,
