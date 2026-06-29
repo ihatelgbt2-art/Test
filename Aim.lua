@@ -20,8 +20,10 @@ function Aim.Init(S, ParentGUI, TF, Util)
 	local botScanAt = 0
 	local triggerLock = nil
 	local triggerLockUntil = 0
-	local silentBusy = false
-	local pendingSilent = nil
+	local shotBusy = false
+	local silentRestoreCF = nil
+	local silentRestoreAt = 0
+	local silentSnapTarget = nil
 
 	local AIM_PARTS = { "Head", "UpperTorso", "Torso", "HumanoidRootPart", "LowerTorso" }
 	local fovLimit = function()
@@ -377,8 +379,45 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		Cam.CFrame = Cam.CFrame:Lerp(goal, alpha)
 	end
 
-	local function doSilentShot(tgt)
-		if silentBusy or pendingSilent or not tgt or not tgt.part or not tgt.char then
+	local function markShot(char)
+		S.LastShotAt = tick()
+		if char then
+			S.LastShotChar = char
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				S.LastShotHum = hum
+			end
+			if S.NotifyShot then
+				pcall(S.NotifyShot, char)
+			end
+		end
+	end
+
+	local function snapSilentCamera(tgt)
+		if not tgt or not tgt.part or not tgt.char then
+			return false
+		end
+		local pos = Util.getFirePosition(tgt.char, tgt.part)
+		if not pos then
+			return false
+		end
+		silentRestoreCF = Cam.CFrame
+		silentRestoreAt = tick()
+		silentSnapTarget = tgt
+		Cam.CFrame = CFrame.new(Cam.CFrame.Position, pos)
+		return true
+	end
+
+	local function restoreSilentCamera()
+		if silentRestoreCF then
+			Cam.CFrame = silentRestoreCF
+			silentRestoreCF = nil
+			silentSnapTarget = nil
+		end
+	end
+
+	local function runSilentShot(tgt)
+		if shotBusy or not tgt or not tgt.part or not tgt.char then
 			return false
 		end
 		if not Util.isValidTarget(tgt.char, tgt.plr) then
@@ -388,44 +427,19 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		if not pos then
 			return false
 		end
-		pendingSilent = { tgt = tgt, pos = pos }
-		return true
-	end
-
-	local function processPendingSilent()
-		if not pendingSilent or silentBusy then
-			return
-		end
-		local job = pendingSilent
-		pendingSilent = nil
-		silentBusy = true
+		shotBusy = true
 		task.spawn(function()
 			pcall(function()
-				Util.performSilentShot(RS, Cam, VIM, job.pos, 2)
+				Util.performSilentShot(RS, Cam, VIM, pos, 2, UIS)
 			end)
-		S.LastShotAt = tick()
-		local hum = job.tgt.char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			S.LastShotHum = hum
-		end
-		S.LastShotChar = job.tgt.char
-		if S.NotifyShot then
-			pcall(S.NotifyShot, job.tgt.char)
-		end
-			silentBusy = false
+			markShot(tgt.char)
+			shotBusy = false
 		end)
-	end
-
-	local function queueSilentShot(tgt)
-		if not doSilentShot(tgt) then
-			return false
-		end
-		task.defer(processPendingSilent)
 		return true
 	end
 
 	local function tryTriggerShot()
-		if S.MenuOpen or S.MasterRage or silentBusy then
+		if S.MenuOpen or S.MasterRage or shotBusy then
 			return
 		end
 		if not triggerArmed() then
@@ -445,13 +459,7 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		end
 
 		lastTrigger = tick()
-		S.LastShotAt = tick()
-		S.LastShotHum = tgt.char:FindFirstChildOfClass("Humanoid")
-		S.LastShotChar = tgt.char
-		if S.NotifyShot then
-			pcall(S.NotifyShot, tgt.char)
-		end
-		Util.fireCrosshair(VIM, Cam)
+		runSilentShot(tgt)
 	end
 
 	pcall(function()
@@ -468,8 +476,8 @@ function Aim.Init(S, ParentGUI, TF, Util)
 			return Enum.ContextActionResult.Pass
 		end
 		local tgt = pickBestTarget(fovLimit())
-		if tgt and queueSilentShot(tgt) then
-			return Enum.ContextActionResult.Sink
+		if tgt and snapSilentCamera(tgt) then
+			markShot(tgt.char)
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseButton1)
@@ -482,8 +490,8 @@ function Aim.Init(S, ParentGUI, TF, Util)
 			return
 		end
 		local tgt = pickBestTarget(fovLimit())
-		if tgt then
-			queueSilentShot(tgt)
+		if tgt and snapSilentCamera(tgt) then
+			markShot(tgt.char)
 		end
 	end)
 
@@ -504,7 +512,10 @@ function Aim.Init(S, ParentGUI, TF, Util)
 	RS.RenderStepped:Connect(function()
 		updFOV()
 		updTriggerHud()
-		processPendingSilent()
+
+		if silentRestoreCF and tick() - silentRestoreAt >= 0.035 then
+			restoreSilentCamera()
+		end
 
 		if not S.Trigger then
 			triggerToggled = false

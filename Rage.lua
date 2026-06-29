@@ -453,16 +453,16 @@ function Rage.Init(S, ParentGUI, TF, Util)
 		local mode = S.RageAimMode or "Silent"
 		task.spawn(function()
 			if mode == "Silent" then
-				Util.performSilentShot(RS, Cam, VIM, targetPos, 2)
+				Util.performSilentShot(RS, Cam, VIM, targetPos, 2, UIS)
 			elseif mode == "Track" then
 				aimCameraAt(targetPos, false)
 				RS.RenderStepped:Wait()
-				Util.fireCrosshair(VIM, Cam)
+				Util.fireCrosshair(VIM, Cam, UIS)
 			else
 				local saved = Cam.CFrame
 				aimCameraAt(targetPos, false)
 				RS.RenderStepped:Wait()
-				Util.fireCrosshair(VIM, Cam)
+				Util.fireCrosshair(VIM, Cam, UIS)
 				Cam.CFrame = saved
 			end
 		end)

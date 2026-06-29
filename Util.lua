@@ -220,16 +220,22 @@ function Util.refreshBotList(list, enabled, LP)
 	end
 end
 
-function Util.fireCrosshair(VIM, Cam)
-	local cx = Cam.ViewportSize.X / 2
-	local cy = Cam.ViewportSize.Y / 2
+function Util.fireCrosshair(VIM, Cam, UIS)
+	local cx, cy
+	if UIS then
+		local loc = UIS:GetMouseLocation()
+		cx, cy = loc.X, loc.Y
+	else
+		cx = Cam.ViewportSize.X / 2
+		cy = Cam.ViewportSize.Y / 2
+	end
 	VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 0)
 	task.defer(function()
 		VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 0)
 	end)
 end
 
-function Util.performSilentShot(RS, Cam, VIM, targetPos, aimFrames)
+function Util.performSilentShot(RS, Cam, VIM, targetPos, aimFrames, UIS)
 	if not targetPos then
 		return
 	end
@@ -239,7 +245,8 @@ function Util.performSilentShot(RS, Cam, VIM, targetPos, aimFrames)
 	for _ = 1, aimFrames do
 		RS.RenderStepped:Wait()
 	end
-	Util.fireCrosshair(VIM, Cam)
+	Util.fireCrosshair(VIM, Cam, UIS)
+	RS.RenderStepped:Wait()
 	RS.RenderStepped:Wait()
 	Cam.CFrame = saved
 end
