@@ -207,6 +207,9 @@ function Misc.Init(S, TF, Util)
 	end
 
 	RS.Heartbeat:Connect(function()
+		if S.Unloaded then
+			return
+		end
 		if not S.HeadSize and not S.HitboxSize then
 			return
 		end
@@ -216,6 +219,21 @@ function Misc.Init(S, TF, Util)
 		lastRefresh = tick()
 		pcall(refreshAll)
 	end)
+
+	if _G.VANGUARD then
+		_G.VANGUARD.registerCleanup(function()
+			for char in pairs(trackedChars) do
+				if char and char.Parent then
+					clearExpands(char)
+				end
+			end
+			for _, plr in ipairs(Players:GetPlayers()) do
+				if plr.Character then
+					clearExpands(plr.Character)
+				end
+			end
+		end)
+	end
 end
 
 return Misc

@@ -1693,7 +1693,7 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule)
 			animOrder += 1
 		end
 	end
-	MakeHint(APlay, "Twerk/Floss/Griddy/Spin = procedural (działa prawie wszędzie). Reszta = Animate gry lub /e chat.", animOrder)
+	MakeHint(APlay, "Procedural: Twerk, Floss, Griddy, Spin, Thunder, Matrix, Disco, Levitate. Reszta = Animate gry lub /e chat.", animOrder)
 
 	local MHit = MakeCard(TM, "HITBOX EXPANDER", "Niewidoczne hitboxy — nie powiększa modelu postaci.", 1)
 	MakeTog(MHit, "Head Size", "HeadSize", 1, { flat = true })
@@ -1723,12 +1723,15 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule)
 		{ label = "Burst", value = "Burst" },
 		{ label = "Ascend", value = "Ascension" },
 		{ label = "Shock", value = "Shock" },
+		{ label = "Nova", value = "Nova" },
 		{ label = "Random", value = "Random" },
 	}, 2)
 	MakeTog(MFX, "Hit Effects", "HitEffects", 3, { flat = true })
 	MakeChoice(MFX, "Hit Style", "HitEffectStyle", {
 		{ label = "Lightning", value = "Lightning" },
 		{ label = "Sparks", value = "Sparks" },
+		{ label = "Nova", value = "Nova" },
+		{ label = "Impact", value = "Impact" },
 	}, 4)
 	MakeTog(MFX, "Self Aura On Kill", "SelfKillFX", 5, { flat = true })
 	MakeButton(MFX, "Test Kill FX", 6, function()
@@ -1960,6 +1963,19 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule)
 			showNotify("Brak autoload lub błąd wczytywania")
 		end
 	end)
+
+	local SSession = MakeCard(T2, "SESSION", "Zarządzanie skryptem.", 6)
+	MakeButton(SSession, "Unload Vanguard", 1, function()
+		if S.Unload then
+			showNotify("Vanguard wyładowany — możesz reinject")
+			task.delay(0.15, function()
+				pcall(S.Unload)
+			end)
+		else
+			showNotify("Unload niedostępny")
+		end
+	end)
+	MakeHint(SSession, "Unload usuwa menu, HUD i hooki. Po reinject menu załaduje się od nowa.", 2)
 
 	-- // Config tab
 	local ConfigNameBox

@@ -12,6 +12,7 @@ function Effects.Init(S, Util)
 	local Cam = workspace.CurrentCamera
 
 	local SPARK_TEX = "rbxassetid://243660064"
+	local SMOKE_TEX = "rbxassetid://1084963537"
 	local watched = {}
 
 	local accent = function()
@@ -84,13 +85,81 @@ function Effects.Init(S, Util)
 		return false
 	end
 
-	local function addHighlight(char, col, life)
+	local function getBloom()
+		local b = Lighting:FindFirstChild("VG_Bloom")
+		if not b then
+			b = Instance.new("BloomEffect")
+			b.Name = "VG_Bloom"
+			b.Enabled = false
+			b.Intensity = 0
+			b.Size = 24
+			b.Threshold = 0.8
+			b.Parent = Lighting
+		end
+		return b
+	end
+
+	local function getCC()
+		local cc = Lighting:FindFirstChild("VG_CC")
+		if not cc then
+			cc = Instance.new("ColorCorrectionEffect")
+			cc.Name = "VG_CC"
+			cc.Enabled = false
+			cc.Parent = Lighting
+		end
+		return cc
+	end
+
+	local function screenFlash(col, bright, sat, life)
+		life = life or 0.22
+		local cc = getCC()
+		cc.Enabled = true
+		cc.TintColor = col
+		cc.Brightness = bright or 0.35
+		cc.Saturation = sat or 0.55
+		cc.Contrast = 0.15
+		TS:Create(cc, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Brightness = 0,
+			Saturation = 0,
+			Contrast = 0,
+		}):Play()
+
+		local bloom = getBloom()
+		bloom.Enabled = true
+		bloom.Intensity = 1.4
+		TS:Create(bloom, TweenInfo.new(life * 1.2), { Intensity = 0 }):Play()
+
+		task.delay(life + 0.05, function()
+			cc.Enabled = false
+			bloom.Enabled = false
+		end)
+	end
+
+	local function camShake(intensity, duration)
+		task.spawn(function()
+			local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+			if not hum then
+				return
+			end
+			local t0 = tick()
+			while tick() - t0 < duration do
+				local decay = 1 - (tick() - t0) / duration
+				local ox = (math.random() - 0.5) * intensity * decay
+				local oy = (math.random() - 0.5) * intensity * decay
+				hum.CameraOffset = Vector3.new(ox, oy, 0)
+				task.wait(0.03)
+			end
+			hum.CameraOffset = Vector3.zero
+		end)
+	end
+
+	local function addHighlight(char, col, life, fillStart)
 		local hl = Instance.new("Highlight")
 		hl.Name = "VG_FX"
 		hl.Adornee = char
 		hl.FillColor = col
 		hl.OutlineColor = Color3.new(1, 1, 1)
-		hl.FillTransparency = 0.1
+		hl.FillTransparency = fillStart or 0.05
 		hl.OutlineTransparency = 0
 		hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 		hl.Parent = Lighting
@@ -117,49 +186,201 @@ function Effects.Init(S, Util)
 		return p
 	end
 
-	local function makeBurst(pos, col, count, speed)
-		local anchor = spawnAnchor(pos, 3)
+	local function makeEmitter(anchor, props)
 		local em = Instance.new("ParticleEmitter")
-		em.Texture = SPARK_TEX
-		em.Color = ColorSequence.new(col, Color3.new(1, 1, 1))
-		em.LightEmission = 1
+		em.Texture = props.Texture or SPARK_TEX
+		em.Color = props.Color or ColorSequence.new(accent(), Color3.new(1, 1, 1))
+		em.LightEmission = props.LightEmission or 1
 		em.Rate = 0
-		em.Speed = NumberRange.new(speed or 8, (speed or 8) + 16)
-		em.Lifetime = NumberRange.new(0.5, 1.1)
-		em.SpreadAngle = Vector2.new(360, 360)
-		em.Drag = 1.5
-		em.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 1.1),
-			NumberSequenceKeypoint.new(0.5, 0.6),
+		em.Speed = props.Speed or NumberRange.new(10, 24)
+		em.Lifetime = props.Lifetime or NumberRange.new(0.4, 1.2)
+		em.SpreadAngle = props.SpreadAngle or Vector2.new(360, 360)
+		em.Drag = props.Drag or 1.2
+		em.RotSpeed = props.RotSpeed or NumberRange.new(-180, 180)
+		em.Size = props.Size or NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1.4),
+			NumberSequenceKeypoint.new(0.4, 0.8),
 			NumberSequenceKeypoint.new(1, 0),
 		})
 		em.Parent = anchor
-		em:Emit(count or 60)
+		return em
 	end
 
-	local function flashBillboard(char, col)
+	local function makeBurst(pos, col, count, speed, tex)
+		local anchor = spawnAnchor(pos, 4)
+		local em = makeEmitter(anchor, {
+			Texture = tex or SPARK_TEX,
+			Color = ColorSequence.new(col, Color3.new(1, 1, 1)),
+			Speed = NumberRange.new(speed or 12, (speed or 12) + 22),
+		})
+		em:Emit(count or 80)
+		return anchor
+	end
+
+	local function makeSmoke(pos, col, count)
+		local anchor = spawnAnchor(pos, 4)
+		local em = makeEmitter(anchor, {
+			Texture = SMOKE_TEX,
+			Color = ColorSequence.new(col, Color3.fromRGB(30, 30, 40)),
+			Speed = NumberRange.new(2, 8),
+			Lifetime = NumberRange.new(0.8, 1.6),
+			SpreadAngle = Vector2.new(180, 180),
+			LightEmission = 0.4,
+			Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 2.5),
+				NumberSequenceKeypoint.new(1, 5),
+			}),
+		})
+		em:Emit(count or 25)
+	end
+
+	local function shockRings(pos, col, count, maxDiam, delayStep)
+		count = count or 4
+		maxDiam = maxDiam or 22
+		delayStep = delayStep or 0.07
+		for i = 1, count do
+			task.delay((i - 1) * delayStep, function()
+				local ring = Instance.new("Part")
+				ring.Name = "VG_FX"
+				ring.Shape = Enum.PartType.Cylinder
+				ring.Anchored = true
+				ring.CanCollide = false
+				ring.CanQuery = false
+				ring.CanTouch = false
+				ring.Material = Enum.Material.Neon
+				ring.Color = col
+				ring.Transparency = 0.15 + (i - 1) * 0.08
+				local startD = 1.5 + i * 0.5
+				ring.Size = Vector3.new(0.2, startD, startD)
+				ring.CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90))
+				ring.Parent = workspace
+				local target = maxDiam + i * 2
+				TS:Create(ring, TweenInfo.new(0.75 + i * 0.08, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(0.06, target, target),
+					Transparency = 1,
+				}):Play()
+				Debris:AddItem(ring, 1)
+			end)
+		end
+	end
+
+	local function flashBillboard(char, col, sizeMult)
 		local root = getRoot(char)
 		if not root then
 			return
 		end
+		sizeMult = sizeMult or 1
 		local bb = Instance.new("BillboardGui")
 		bb.Name = "VG_FX"
 		bb.Adornee = root
 		bb.AlwaysOnTop = true
-		bb.Size = UDim2.new(6, 0, 6, 0)
-		bb.StudsOffset = Vector3.new(0, 1, 0)
+		bb.Size = UDim2.new(7 * sizeMult, 0, 7 * sizeMult, 0)
+		bb.StudsOffset = Vector3.new(0, 1.2, 0)
 		bb.Parent = root
 		local img = Instance.new("Frame")
 		img.Size = UDim2.new(1, 0, 1, 0)
 		img.BackgroundColor3 = col
-		img.BackgroundTransparency = 0.35
+		img.BackgroundTransparency = 0.2
 		img.BorderSizePixel = 0
 		img.Parent = bb
 		local cr = Instance.new("UICorner")
 		cr.CornerRadius = UDim.new(1, 0)
 		cr.Parent = img
-		TS:Create(img, TweenInfo.new(0.5), { BackgroundTransparency = 1, Size = UDim2.new(1.6, 0, 1.6, 0) }):Play()
-		Debris:AddItem(bb, 0.6)
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.new(1, 1, 1)
+		stroke.Thickness = 3
+		stroke.Transparency = 0.2
+		stroke.Parent = img
+		TS:Create(img, TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(2.2, 0, 2.2, 0),
+		}):Play()
+		TS:Create(stroke, TweenInfo.new(0.55), { Transparency = 1 }):Play()
+		Debris:AddItem(bb, 0.65)
+	end
+
+	local function forkLightning(fromPos, toPos, col, forks)
+		forks = forks or 3
+		for f = 1, forks do
+			local mid = fromPos:Lerp(toPos, 0.35 + math.random() * 0.3)
+			mid = mid + Vector3.new((math.random() - 0.5) * 6, (math.random() - 0.5) * 4, (math.random() - 0.5) * 6)
+			local top = spawnAnchor(fromPos, 0.5)
+			local midA = spawnAnchor(mid, 0.5)
+			local bot = spawnAnchor(toPos, 0.5)
+			local function beam(a0, a1, w)
+				local b = Instance.new("Beam")
+				b.Attachment0 = Instance.new("Attachment", a0)
+				b.Attachment1 = Instance.new("Attachment", a1)
+				b.Color = ColorSequence.new(col, Color3.new(1, 1, 1))
+				b.LightEmission = 1
+				b.Width0 = w
+				b.Width1 = w * 0.3
+				b.FaceCamera = true
+				b.CurveSize0 = (math.random() - 0.5) * 4
+				b.CurveSize1 = (math.random() - 0.5) * 4
+				b.Parent = a0
+			end
+			beam(top, midA, 1.4 - f * 0.15)
+			beam(midA, bot, 1.0 - f * 0.1)
+		end
+	end
+
+	local function ghostAscend(char, col)
+		local root = getRoot(char)
+		if not root then
+			return
+		end
+		local ghost = char:Clone()
+		ghost.Name = "VG_Ghost"
+		for _, d in ipairs(ghost:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				d.CanCollide = false
+				d.CanQuery = false
+				d.CanTouch = false
+				d.Material = Enum.Material.Neon
+				d.Color = col
+				d.Transparency = 0.35
+			elseif d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Humanoid") then
+				d:Destroy()
+			elseif d:IsA("Decal") or d:IsA("Texture") then
+				d:Destroy()
+			end
+		end
+		ghost:PivotTo(char:GetPivot())
+		ghost.Parent = workspace
+		local start = ghost:GetPivot()
+		task.spawn(function()
+			local t0 = tick()
+			while tick() - t0 < 1.2 do
+				local a = (tick() - t0) / 1.2
+				ghost:PivotTo(start * CFrame.new(0, a * 8, 0))
+				for _, p in ipairs(ghost:GetDescendants()) do
+					if p:IsA("BasePart") then
+						p.Transparency = 0.35 + a * 0.65
+					end
+				end
+				task.wait(0.03)
+			end
+			ghost:Destroy()
+		end)
+	end
+
+	local function novaBurst(char, col)
+		local root = getRoot(char)
+		if not root then
+			return
+		end
+		local pos = root.Position + Vector3.new(0, 1.5, 0)
+		shockRings(pos, col, 5, 28, 0.06)
+		makeBurst(pos, col, 120, 22)
+		makeBurst(pos, Color3.new(1, 1, 1), 40, 14)
+		makeSmoke(pos, col, 35)
+		screenFlash(col, 0.45, 0.7, 0.28)
+		camShake(0.35, 0.35)
+		addHighlight(char, col, 1.1, 0)
+		flashBillboard(char, col, 1.4)
+		ghostAscend(char, col)
 	end
 
 	local function trackPosition(char, seconds, stepFn)
@@ -181,12 +402,18 @@ function Effects.Init(S, Util)
 
 	local function effectNeonDissolve(char)
 		local col = accent()
-		addHighlight(char, col, 0.95)
-		flashBillboard(char, col)
+		addHighlight(char, col, 1.2, 0)
+		flashBillboard(char, col, 1.2)
+		screenFlash(col, 0.25, 0.4, 0.18)
 		local root = getRoot(char)
 		if root then
-			makeBurst(root.Position + Vector3.new(0, 1.5, 0), col, 50, 10)
+			local pos = root.Position + Vector3.new(0, 1.5, 0)
+			shockRings(pos, col, 3, 18)
+			makeBurst(pos, col, 90, 14)
+			makeBurst(pos, Color3.fromRGB(255, 255, 255), 30, 10)
+			ghostAscend(char, col)
 		end
+		camShake(0.2, 0.25)
 	end
 
 	local function effectParticleBurst(char)
@@ -195,21 +422,35 @@ function Effects.Init(S, Util)
 			return
 		end
 		local col = accent()
-		makeBurst(root.Position, col, 70, 16)
-		makeBurst(root.Position + Vector3.new(0, 2, 0), Color3.fromRGB(40, 40, 48), 35, 8)
-		addHighlight(char, col, 0.4)
+		local pos = root.Position
+		makeBurst(pos, col, 100, 20)
+		makeBurst(pos + Vector3.new(0, 2.5, 0), Color3.fromRGB(255, 200, 80), 60, 16)
+		makeBurst(pos + Vector3.new(0, 1, 0), Color3.fromRGB(40, 40, 48), 45, 10)
+		makeSmoke(pos, col, 30)
+		shockRings(pos + Vector3.new(0, 1, 0), col, 4, 20)
+		addHighlight(char, col, 0.65, 0.1)
+		flashBillboard(char, col, 1.1)
+		screenFlash(col, 0.3, 0.5, 0.2)
+		camShake(0.28, 0.3)
 	end
 
 	local function effectAscension(char)
 		local col = accent()
-		addHighlight(char, col, 1.4)
-		trackPosition(char, 1.5, function(pos, elapsed)
-			makeBurst(pos + Vector3.new(0, elapsed * 6, 0), col, 6, 4)
+		addHighlight(char, col, 1.6, 0)
+		screenFlash(col, 0.35, 0.6, 0.25)
+		trackPosition(char, 1.8, function(pos, elapsed)
+			makeBurst(pos + Vector3.new(0, elapsed * 7, 0), col, 10, 6)
+			if math.floor(elapsed * 10) % 3 == 0 then
+				makeBurst(pos + Vector3.new(0, elapsed * 7, 0), Color3.new(1, 1, 1), 4, 4)
+			end
 		end)
 		local root = getRoot(char)
 		if root then
-			makeBurst(root.Position, col, 25, 6)
+			shockRings(root.Position, col, 4, 16)
+			makeBurst(root.Position, col, 50, 8)
+			ghostAscend(char, col)
 		end
+		camShake(0.22, 0.4)
 	end
 
 	local function effectShockRing(char)
@@ -217,24 +458,14 @@ function Effects.Init(S, Util)
 		if not root then
 			return
 		end
-		local ring = Instance.new("Part")
-		ring.Name = "VG_FX"
-		ring.Shape = Enum.PartType.Cylinder
-		ring.Anchored = true
-		ring.CanCollide = false
-		ring.CanQuery = false
-		ring.CanTouch = false
-		ring.Material = Enum.Material.Neon
-		ring.Color = accent()
-		ring.Transparency = 0.2
-		ring.Size = Vector3.new(0.15, 1, 1)
-		ring.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, 0, math.rad(90))
-		ring.Parent = workspace
-		TS:Create(ring, TweenInfo.new(0.65, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = Vector3.new(0.08, 16, 16),
-			Transparency = 1,
-		}):Play()
-		Debris:AddItem(ring, 0.75)
+		local col = accent()
+		local pos = root.Position
+		shockRings(pos, col, 6, 32, 0.05)
+		makeBurst(pos + Vector3.new(0, 0.5, 0), col, 70, 18)
+		addHighlight(char, col, 0.8, 0.15)
+		flashBillboard(char, col, 1.3)
+		screenFlash(col, 0.4, 0.55, 0.24)
+		camShake(0.32, 0.35)
 	end
 
 	local function effectLightningHit(char)
@@ -245,20 +476,15 @@ function Effects.Init(S, Util)
 			return
 		end
 		local col = accent()
-		local top = spawnAnchor(target.Position + Vector3.new(0, 14, 0), 0.4)
-		local bot = spawnAnchor(target.Position, 0.4)
-		local beam = Instance.new("Beam")
-		beam.Attachment0 = Instance.new("Attachment", top)
-		beam.Attachment1 = Instance.new("Attachment", bot)
-		beam.Color = ColorSequence.new(col, Color3.new(1, 1, 1))
-		beam.LightEmission = 1
-		beam.Width0 = 1.2
-		beam.Width1 = 0.2
-		beam.FaceCamera = true
-		beam.Parent = top
-		makeBurst(target.Position, col, 30, 12)
-		addHighlight(char, col, 0.35)
-		flashBillboard(char, col)
+		local topPos = target.Position + Vector3.new(0, 18 + math.random() * 6, 0)
+		forkLightning(topPos, target.Position, col, 4)
+		makeBurst(target.Position, col, 55, 16)
+		makeBurst(target.Position + Vector3.new(0, 1, 0), Color3.new(1, 1, 1), 20, 12)
+		shockRings(target.Position, col, 2, 12, 0.05)
+		addHighlight(char, col, 0.55, 0)
+		flashBillboard(char, col, 1.15)
+		screenFlash(col, 0.32, 0.65, 0.16)
+		camShake(0.18, 0.2)
 	end
 
 	local function effectSparkHit(char)
@@ -266,8 +492,46 @@ function Effects.Init(S, Util)
 		if not root then
 			return
 		end
-		makeBurst(root.Position + Vector3.new(0, 1.2, 0), accent(), 35, 10)
-		flashBillboard(char, accent())
+		local col = accent()
+		local pos = root.Position + Vector3.new(0, 1.2, 0)
+		makeBurst(pos, col, 55, 14)
+		makeBurst(pos, Color3.fromRGB(255, 220, 100), 25, 10)
+		shockRings(pos, col, 2, 10)
+		flashBillboard(char, col)
+		screenFlash(col, 0.18, 0.35, 0.12)
+		camShake(0.12, 0.15)
+	end
+
+	local function effectNovaHit(char)
+		local root = getRoot(char)
+		if not root then
+			return
+		end
+		local col = accent()
+		local pos = root.Position + Vector3.new(0, 1.4, 0)
+		shockRings(pos, col, 3, 14, 0.05)
+		makeBurst(pos, col, 75, 18)
+		makeBurst(pos, Color3.new(1, 1, 1), 25, 12)
+		addHighlight(char, col, 0.45, 0.05)
+		flashBillboard(char, col, 1.2)
+		screenFlash(col, 0.28, 0.5, 0.18)
+		camShake(0.22, 0.22)
+	end
+
+	local function effectImpactHit(char)
+		local root = getRoot(char)
+		if not root then
+			return
+		end
+		local col = accent()
+		local pos = root.Position
+		shockRings(pos, col, 4, 16, 0.04)
+		makeBurst(pos + Vector3.new(0, 0.8, 0), col, 65, 20)
+		makeSmoke(pos, Color3.fromRGB(60, 60, 70), 20)
+		addHighlight(char, Color3.fromRGB(255, 80, 80), 0.35, 0.1)
+		flashBillboard(char, Color3.fromRGB(255, 120, 80), 1.25)
+		screenFlash(Color3.fromRGB(255, 100, 80), 0.22, 0.4, 0.14)
+		camShake(0.25, 0.28)
 	end
 
 	local function effectSelfAura()
@@ -279,8 +543,12 @@ function Effects.Init(S, Util)
 		if not root then
 			return
 		end
-		makeBurst(root.Position, accent(), 40, 12)
-		addHighlight(char, accent(), 0.55)
+		local col = accent()
+		makeBurst(root.Position, col, 70, 16)
+		shockRings(root.Position, col, 3, 14)
+		addHighlight(char, col, 0.75, 0.1)
+		screenFlash(col, 0.2, 0.45, 0.15)
+		camShake(0.15, 0.2)
 	end
 
 	local KILL_FX = {
@@ -288,17 +556,20 @@ function Effects.Init(S, Util)
 		Burst = effectParticleBurst,
 		Ascension = effectAscension,
 		Shock = effectShockRing,
+		Nova = novaBurst,
 	}
 
 	local HIT_FX = {
 		Lightning = effectLightningHit,
 		Sparks = effectSparkHit,
+		Nova = effectNovaHit,
+		Impact = effectImpactHit,
 	}
 
 	local function pickKillFx()
 		local style = S.KillEffectStyle or "Neon"
 		if style == "Random" then
-			style = ({ "Neon", "Burst", "Ascension", "Shock" })[math.random(1, 4)]
+			style = ({ "Neon", "Burst", "Ascension", "Shock", "Nova" })[math.random(1, 5)]
 		end
 		return KILL_FX[style] or effectNeonDissolve
 	end
@@ -316,7 +587,7 @@ function Effects.Init(S, Util)
 		if not char or not isEnemyChar(char) then
 			return
 		end
-		if lastHitFxChar == char and tick() - lastHitFxAt < 0.3 then
+		if lastHitFxChar == char and tick() - lastHitFxAt < 0.25 then
 			return
 		end
 		lastHitFxChar = char
@@ -462,6 +733,9 @@ function Effects.Init(S, Util)
 	local scanAt = 0
 
 	RS.Heartbeat:Connect(function()
+		if S.Unloaded then
+			return
+		end
 		if tick() - scanAt > 2 then
 			scanAt = tick()
 			scanChars()

@@ -1250,6 +1250,10 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 	if AntiBypassModule then
 		AntiBypassModule.concealGui(HudGui)
 	end
+
+	if _G.VANGUARD then
+		_G.VANGUARD.registerGui(HudGui)
+	end
 end
 
 return Features

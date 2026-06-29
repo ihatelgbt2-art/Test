@@ -101,7 +101,10 @@ function AntiBypass.Init(S)
 	end)
 
 	task.spawn(function()
-		while S.AntiBypass ~= false do
+		while S.AntiBypass ~= false and not S.Unloaded do
+			if _G.VANGUARD and not _G.VANGUARD.Active then
+				break
+			end
 			sweep(root)
 			task.wait(2)
 		end

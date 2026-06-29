@@ -176,6 +176,15 @@ function World.Init(S)
 	end
 
 	World.Refresh()
+
+	if _G.VANGUARD then
+		_G.VANGUARD.registerCleanup(function()
+			restoreDefaults()
+			if menuBlur and menuBlur.Parent then
+				menuBlur:Destroy()
+			end
+		end)
+	end
 end
 
 return World

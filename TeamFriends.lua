@@ -287,6 +287,10 @@ function TeamFriends.Init(S, ParentGUI, accent, onFriendChanged)
 			end
 		end)
 	end)
+
+	if _G.VANGUARD then
+		_G.VANGUARD.registerGui(PopGui)
+	end
 end
 
 return TeamFriends
