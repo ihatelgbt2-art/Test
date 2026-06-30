@@ -14,6 +14,9 @@ local RUNTIME_KEYS = {
 	LastShotAt = true,
 	LastShotHum = true,
 	LastShotChar = true,
+	LastShotPos = true,
+	LastShotRayOrigin = true,
+	LastShotRayDir = true,
 }
 
 local function canPersist()

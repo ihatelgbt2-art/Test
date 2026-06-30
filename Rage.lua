@@ -445,16 +445,21 @@ function Rage.Init(S, ParentGUI, TF, Util)
 		S.LastShotAt = tick()
 		S.LastShotHum = tgt.char:FindFirstChildOfClass("Humanoid")
 		S.LastShotChar = tgt.char
+		S.LastShotPos = targetPos
 		if S.NotifyShot then
 			pcall(S.NotifyShot, tgt.char)
-		end
-		if S.RequestShotTracer then
-			pcall(S.RequestShotTracer, false, tgt.char)
 		end
 
 		rageShootingUntil = tick() + 0.12
 		local mode = S.RageAimMode or "Silent"
 		task.spawn(function()
+			Cam.CFrame = CFrame.new(Cam.CFrame.Position, targetPos)
+			local ray = Cam:ViewportPointToRay(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
+			S.LastShotRayOrigin = ray.Origin
+			S.LastShotRayDir = ray.Direction
+			if S.RequestShotTracer then
+				pcall(S.RequestShotTracer, false, tgt.char, targetPos)
+			end
 			if mode == "Silent" then
 				Util.performSilentShot(RS, Cam, VIM, targetPos, 2, UIS)
 			elseif mode == "Track" then

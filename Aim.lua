@@ -379,20 +379,38 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		Cam.CFrame = Cam.CFrame:Lerp(goal, alpha)
 	end
 
-	local function markShot(char)
+	local function captureShotRay(aimPos)
+		local ray = Cam:ViewportPointToRay(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
+		S.LastShotRayOrigin = ray.Origin
+		S.LastShotRayDir = ray.Direction
+		if aimPos then
+			S.LastShotPos = aimPos
+		end
+	end
+
+	local function markShot(char, aimPos)
 		S.LastShotAt = tick()
+		captureShotRay(aimPos)
 		if char then
 			S.LastShotChar = char
 			local hum = char:FindFirstChildOfClass("Humanoid")
 			if hum then
 				S.LastShotHum = hum
 			end
+			if not aimPos then
+				local head = char:FindFirstChild("Head")
+				local hrp = char:FindFirstChild("HumanoidRootPart")
+				local part = head or hrp
+				if part then
+					S.LastShotPos = part.Position
+				end
+			end
 			if S.NotifyShot then
 				pcall(S.NotifyShot, char)
 			end
 		end
 		if S.RequestShotTracer then
-			pcall(S.RequestShotTracer, false, char)
+			pcall(S.RequestShotTracer, false, char, S.LastShotPos)
 		end
 	end
 
@@ -432,10 +450,11 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		end
 		shotBusy = true
 		task.spawn(function()
+			Cam.CFrame = CFrame.new(Cam.CFrame.Position, pos)
+			markShot(tgt.char, pos)
 			pcall(function()
 				Util.performSilentShot(RS, Cam, VIM, pos, 2, UIS)
 			end)
-			markShot(tgt.char)
 			shotBusy = false
 		end)
 		return true
@@ -480,7 +499,8 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		end
 		local tgt = pickBestTarget(fovLimit())
 		if tgt and snapSilentCamera(tgt) then
-			markShot(tgt.char)
+			local pos = Util.getFirePosition(tgt.char, tgt.part)
+			markShot(tgt.char, pos)
 		end
 		return Enum.ContextActionResult.Pass
 	end, false, Enum.ContextActionPriority.High.Value, Enum.UserInputType.MouseButton1)
@@ -494,7 +514,8 @@ function Aim.Init(S, ParentGUI, TF, Util)
 		end
 		local tgt = pickBestTarget(fovLimit())
 		if tgt and snapSilentCamera(tgt) then
-			markShot(tgt.char)
+			local pos = Util.getFirePosition(tgt.char, tgt.part)
+			markShot(tgt.char, pos)
 		end
 	end)
 

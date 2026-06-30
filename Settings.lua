@@ -1,7 +1,7 @@
 -- Plik: workspace/Vanguard/Settings.lua
 
 local Settings = {
-	Version = "2.13.1",
+	Version = "2.13.2",
 	-- ESP
 	ESP = false,
 	Box = false,
@@ -120,6 +120,9 @@ local Settings = {
 	LastShotAt = 0,
 	LastShotHum = nil,
 	LastShotChar = nil,
+	LastShotPos = nil,
+	LastShotRayOrigin = nil,
+	LastShotRayDir = nil,
 }
 
 return Settings

@@ -944,56 +944,64 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 		end)
 	end
 
-	local function getTracerOrigin()
-		local char = LP.Character
-		if not char then
-			return Cam.CFrame.Position
-		end
-		local tool = char:FindFirstChildOfClass("Tool")
-		if tool then
-			local handle = tool:FindFirstChild("Handle")
-			if handle and handle:IsA("BasePart") then
-				return handle.Position
-			end
-		end
-		local head = char:FindFirstChild("Head")
-		if head then
-			return head.Position
-		end
-		return Cam.CFrame.Position
-	end
-
-	local function getTracerEnd(targetChar)
-		if targetChar and targetChar.Parent then
+	local function resolveTracerLine(targetChar, aimPos)
+		local to = aimPos
+		if typeof(to) ~= "Vector3" and targetChar and targetChar.Parent then
 			local head = targetChar:FindFirstChild("Head")
 			local hrp = targetChar:FindFirstChild("HumanoidRootPart")
 			local part = head or hrp
 			if part then
-				return part.Position
+				to = part.Position
 			end
 		end
-		if S.LastShotChar and S.LastShotChar.Parent then
-			local head = S.LastShotChar:FindFirstChild("Head")
-			local hrp = S.LastShotChar:FindFirstChild("HumanoidRootPart")
-			local part = head or hrp
-			if part then
-				return part.Position
+		if typeof(to) ~= "Vector3" and S.LastShotPos then
+			local shotAt = tonumber(S.LastShotAt)
+			if shotAt and tick() - shotAt <= 2.5 then
+				to = S.LastShotPos
 			end
 		end
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		params.FilterDescendantsInstances = LP.Character and { LP.Character } or {}
-		local ray = Cam:ViewportPointToRay(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
-		local hit = workspace:Raycast(ray.Origin, ray.Direction * 1400, params)
-		if hit then
-			return hit.Position
+
+		local rayOrigin = S.LastShotRayOrigin
+		local shotAt = tonumber(S.LastShotAt)
+		if typeof(rayOrigin) ~= "Vector3" or not shotAt or tick() - shotAt > 0.75 then
+			local ray = Cam:ViewportPointToRay(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
+			rayOrigin = ray.Origin
 		end
-		return ray.Origin + ray.Direction * 250
+
+		if typeof(to) ~= "Vector3" then
+			local ray = Cam:ViewportPointToRay(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			params.FilterDescendantsInstances = LP.Character and { LP.Character } or {}
+			local hit = workspace:Raycast(ray.Origin, ray.Direction * 1400, params)
+			if hit then
+				to = hit.Position
+			else
+				to = ray.Origin + ray.Direction * 220
+			end
+			if typeof(rayOrigin) ~= "Vector3" then
+				rayOrigin = ray.Origin
+			end
+		end
+
+		local delta = to - rayOrigin
+		local dist = delta.Magnitude
+		if dist < 2 then
+			return nil, nil
+		end
+		local dir = delta.Unit
+
+		local hideDist = math.clamp(dist * 0.5, 22, dist - 2)
+		if hideDist >= dist - 1 then
+			hideDist = dist * 0.3
+		end
+		local from = rayOrigin + dir * hideDist
+		return from, to
 	end
 
 	local lastBulletTracerAt = 0
 
-	local function spawnShotTracer(isKill, targetChar)
+	local function spawnShotTracer(isKill, targetChar, aimPos)
 		if isKill then
 			if not S.KillShotTracers then
 				return
@@ -1007,11 +1015,14 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 		if not isKill then
 			lastBulletTracerAt = tick()
 		end
-		local from = getTracerOrigin()
-		local to = getTracerEnd(targetChar)
+
+		local from, to = resolveTracerLine(targetChar, aimPos)
+		if not from or not to then
+			return
+		end
 		local diff = to - from
 		local dist = diff.Magnitude
-		if dist < 0.4 then
+		if dist < 0.5 then
 			return
 		end
 		local mid = from + diff * 0.5
@@ -1061,8 +1072,8 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 		end
 	end
 
-	function S.RequestShotTracer(isKill, targetChar)
-		pcall(spawnShotTracer, isKill == true, targetChar)
+	function S.RequestShotTracer(isKill, targetChar, aimPos)
+		pcall(spawnShotTracer, isKill == true, targetChar, aimPos)
 	end
 
 	local function registerHit(hum, dmg, plrName)
@@ -1101,7 +1112,7 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 		session.kills += 1
 		pcall(addKillFeed, plrName or "Target")
 		if S.KillShotTracers then
-			pcall(spawnShotTracer, true, victimChar)
+			pcall(spawnShotTracer, true, victimChar, S.LastShotPos)
 		end
 	end
 
@@ -1235,19 +1246,38 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			local ray = Cam:ViewportPointToRay(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
+			S.LastShotRayOrigin = ray.Origin
+			S.LastShotRayDir = ray.Direction
 			S.LastShotAt = tick()
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			params.FilterDescendantsInstances = LP.Character and { LP.Character } or {}
+			local hit = workspace:Raycast(ray.Origin, ray.Direction * 1400, params)
+			local aimPos = hit and hit.Position or nil
 			local hum = rayHum()
 			if hum then
 				S.LastShotHum = hum
 				if hum.Parent and hum.Parent:IsA("Model") then
 					S.LastShotChar = hum.Parent
+					if not aimPos then
+						local head = hum.Parent:FindFirstChild("Head")
+						local hrp = hum.Parent:FindFirstChild("HumanoidRootPart")
+						local part = head or hrp
+						if part then
+							aimPos = part.Position
+						end
+					end
 					if S.NotifyShot then
 						pcall(S.NotifyShot, hum.Parent)
 					end
 				end
 			end
+			if aimPos then
+				S.LastShotPos = aimPos
+			end
 			if S.ShotTracers then
-				pcall(spawnShotTracer, false, hum and hum.Parent or nil)
+				pcall(spawnShotTracer, false, hum and hum.Parent or nil, aimPos)
 			end
 		end
 	end)
