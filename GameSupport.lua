@@ -16,7 +16,13 @@ local GameSupport = {}
 	  ["game:123456789"] = { status = "Not Supported", note = "Silny anty-cheat" },
 ]]
 GameSupport.ENTRIES = {
-	-- [292439477] = { status = "Partially Supported", note = "Phantom Forces" },
+	[120851538706364] = { status = "Partially Supported", note = "Murder Duels — tylko legit" },
+	[106502313058092] = { status = "Supported", note = "Aura Edit Arena" },
+	[109397169461300] = { status = "Partially Supported", note = "SNIPER DUELS" },
+	[103911874761600] = { status = "Supported", note = "Murderer VS Sniper DUELS" },
+	[12355337193] = { status = "Supported", note = "Murderers VS Sheriffs DUELS" },
+	[72258920367796] = { status = "Supported", note = "Recoil" },
+	[87018676608089] = { status = "Partially Supported", note = "Pistol Arena" },
 }
 
 local STATUS_UI = {
@@ -65,17 +71,21 @@ function GameSupport.getStatusDisplay(status)
 	return ui.label, ui.color
 end
 
-function GameSupport.getThumbnail(placeId, iconAssetId)
+function GameSupport.getThumbnail(iconAssetId, gameId)
 	if iconAssetId then
 		return "rbxthumb://type=Asset&id=" .. tostring(iconAssetId) .. "&w=150&h=150"
 	end
-	return "rbxthumb://type=Place&id=" .. tostring(placeId) .. "&w=150&h=150"
+	if gameId and gameId > 0 then
+		return "rbxthumb://type=GameThumbnail&id=" .. tostring(gameId) .. "&w=150&h=150"
+	end
+	return ""
 end
 
-function GameSupport.getGameInfo(placeId)
+function GameSupport.getGameInfo(placeId, gameId)
 	placeId = placeId or game.PlaceId
+	gameId = gameId or game.GameId
 	local name = "Unknown Game"
-	local thumb = GameSupport.getThumbnail(placeId)
+	local thumb = GameSupport.getThumbnail(nil, gameId)
 
 	local ok, info = pcall(function()
 		return game:GetService("MarketplaceService"):GetProductInfo(placeId)
@@ -85,7 +95,7 @@ function GameSupport.getGameInfo(placeId)
 			name = info.Name
 		end
 		if info.IconImageAssetId then
-			thumb = GameSupport.getThumbnail(placeId, info.IconImageAssetId)
+			thumb = GameSupport.getThumbnail(info.IconImageAssetId, gameId)
 		end
 	elseif game.Name and game.Name ~= "" then
 		name = game.Name

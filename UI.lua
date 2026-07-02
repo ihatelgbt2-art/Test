@@ -229,7 +229,11 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule, 
 
 	local function refreshLoaderGameInfo()
 		local placeId = game.PlaceId
-		LoaderGameIcon.Image = "rbxthumb://type=Place&id=" .. placeId .. "&w=150&h=150"
+		local gameId = game.GameId
+		local fallbackThumb = GameSupportModule
+			and GameSupportModule.getThumbnail(nil, gameId)
+			or (gameId > 0 and ("rbxthumb://type=GameThumbnail&id=" .. gameId .. "&w=150&h=150") or "")
+		LoaderGameIcon.Image = fallbackThumb
 		LoaderGameName.Text = game.Name ~= "" and game.Name or ("Place " .. tostring(placeId))
 
 		if not GameSupportModule then
@@ -239,7 +243,6 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule, 
 			return
 		end
 
-		local gameId = game.GameId
 		local status, note = GameSupportModule.getStatus(placeId, gameId)
 		local badge, badgeColor = GameSupportModule.getStatusDisplay(status)
 		LoaderSupportBadge.Text = badge
@@ -247,7 +250,7 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule, 
 		LoaderSupportNote.Text = note or ""
 
 		task.spawn(function()
-			local name, thumb = GameSupportModule.getGameInfo(placeId)
+			local name, thumb = GameSupportModule.getGameInfo(placeId, gameId)
 			LoaderGameName.Text = name
 			if thumb and thumb ~= "" then
 				LoaderGameIcon.Image = thumb
