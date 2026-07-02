@@ -172,6 +172,13 @@ function Core.unload()
 	end)
 
 	pcall(function()
+		local dmg = workspace:FindFirstChild("VG_DmgNums")
+		if dmg then
+			dmg:Destroy()
+		end
+	end)
+
+	pcall(function()
 		game:GetService("ContextActionService"):UnbindAction("VanguardSilent")
 	end)
 

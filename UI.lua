@@ -1836,6 +1836,8 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule)
 	MakeTog(VAdv, "Tracers", "Trace", 3, { flat = true })
 	MakeTog(VAdv, "Chams Fill", "Chams", 4, { flat = true })
 	MakeTog(VAdv, "Chams Rainbow", "ChamsRainbow", 5, { flat = true })
+	MakeTog(VAdv, "Offscreen Arrows", "OffscreenArrows", 6, { flat = true })
+	MakeHint(VAdv, "Strzałki na krawędzi ekranu wskazują wrogów poza FOV (wymaga ESP).", 7)
 
 	local VTrace = MakeCard(T1, "SHOT TRACERS", "Neonowa linia od broni do celu — tylko Ty widzisz.", 6)
 	MakeTog(VTrace, "Bullet Tracers", "ShotTracers", 1, { flat = true })
@@ -2234,14 +2236,15 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule)
 	MakeTog(SHud, "Crosshair Dot", "Crosshair", 1, { flat = true })
 	MakeSlider(SHud, "Crosshair Size", "CrosshairSize", 2, 12, 2, { suffix = "px", step = 1 })
 	MakeTog(SHud, "Spectator List", "Spectators", 3, { flat = true })
-	MakeTog(SHud, "Hitmarker", "Hitmarker", 4, { flat = true })
-	MakeTog(SHud, "Hit Sound", "HitSound", 5, { flat = true })
-	MakeSlider(SHud, "Hit Sound Volume", "HitSoundVolume", 0.1, 1, 6, {
+	MakeTog(SHud, "Target Info Panel", "TargetInfo", 4, { flat = true })
+	MakeTog(SHud, "Hitmarker", "Hitmarker", 5, { flat = true })
+	MakeTog(SHud, "Hit Sound", "HitSound", 6, { flat = true })
+	MakeSlider(SHud, "Hit Sound Volume", "HitSoundVolume", 0.1, 1, 7, {
 		suffix = "",
 		step = 0.05,
 		fmt = function(v) return math.floor(v * 100) .. "%" end,
 	})
-	MakeButton(SHud, "Test Hitmarker + Sound", 7, function()
+	MakeButton(SHud, "Test Hitmarker + Sound", 8, function()
 		if S.TestHitFeedback then
 			S.TestHitFeedback()
 			showNotify("Test hitmarker / dźwięku")
@@ -2249,12 +2252,14 @@ function UI.Init(S, ParentGUI, ConfigModule, TF, AnimationsModule, WorldModule)
 			showNotify("Features nie załadowane")
 		end
 	end)
-	MakeHint(SHud, "Hitmarker: krzyżyk na środku ekranu po trafieniu (1.5s od strzału). Damage log pokazuje -HP.", 8)
-	MakeTog(SHud, "Damage Log", "DamageLog", 9, { flat = true })
-	MakeTog(SHud, "Watermark", "Watermark", 10, { flat = true })
-	MakeTog(SHud, "Keybind List", "KeybindList", 11, { flat = true })
-	MakeTog(SHud, "Session Stats", "SessionStats", 12, { flat = true })
-	MakeTog(SHud, "Kill Feed", "KillFeed", 13, { flat = true })
+	MakeHint(SHud, "Hitmarker: krzyżyk na środku ekranu po trafieniu (1.5s od strzału). Damage log pokazuje -HP.", 9)
+	MakeTog(SHud, "Damage Log", "DamageLog", 10, { flat = true })
+	MakeTog(SHud, "3D Damage Numbers", "DamageNumbers", 11, { flat = true })
+	MakeTog(SHud, "Watermark", "Watermark", 12, { flat = true })
+	MakeTog(SHud, "Keybind List", "KeybindList", 13, { flat = true })
+	MakeTog(SHud, "Session Stats", "SessionStats", 14, { flat = true })
+	MakeTog(SHud, "Kill Feed", "KillFeed", 15, { flat = true })
+	MakeHint(SHud, "Spectator list pokazuje tylko graczy, którzy faktycznie Cię obserwują (atrybuty / kamera).", 16)
 
 	local SettingsAutoloadLbl
 	local SAuto = MakeCard(T2, "AUTOLOAD", "Config ładuje się przy starcie skryptu.", 4)

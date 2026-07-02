@@ -652,6 +652,16 @@ function Aim.Init(S, ParentGUI, TF, Util)
 			end)
 		end
 	end)
+
+	S.GetAimTarget = function()
+		if S.MasterRage and S.RageBot and S.GetRageTarget then
+			return S.GetRageTarget()
+		end
+		if S.Aimbot or S.Silent or S.Trigger or S.TargetInfo then
+			return pickBestTarget(fovLimit())
+		end
+		return nil
+	end
 end
 
 return Aim

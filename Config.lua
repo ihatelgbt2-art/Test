@@ -216,6 +216,15 @@ function Config.EnforceRules(S)
 	if S.TransferScript == nil then
 		S.TransferScript = false
 	end
+	if S.OffscreenArrows == nil then
+		S.OffscreenArrows = false
+	end
+	if S.DamageNumbers == nil then
+		S.DamageNumbers = false
+	end
+	if S.TargetInfo == nil then
+		S.TargetInfo = false
+	end
 	if S.AimKey == nil or S.AimKey == "" then
 		S.AimKey = "MouseButton2"
 	end

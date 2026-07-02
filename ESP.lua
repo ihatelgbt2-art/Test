@@ -30,6 +30,8 @@ function ESP.Init(S, ParentGUI, TF, Util)
 	end
 
 	local ESP_C = C("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Parent = ParentGUI })
+	local Arrow_C = C("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Parent = ParentGUI })
+	local arrowCache = {}
 
 	local function Ln()
 		return C("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), BorderSizePixel = 0, Visible = false, Parent = ESP_C })
@@ -421,6 +423,116 @@ function ESP.Init(S, ParentGUI, TF, Util)
 	local lastRenderBots = S.RenderBots
 	local lastESP = S.ESP
 
+	local function getOffscreenPlacement(worldPos)
+		local viewport = Cam.ViewportSize
+		local cx, cy = viewport.X * 0.5, viewport.Y * 0.5
+		local pos, onScreen = Cam:WorldToViewportPoint(worldPos)
+		if onScreen and pos.Z > 0 and pos.X >= 0 and pos.X <= viewport.X and pos.Y >= 0 and pos.Y <= viewport.Y then
+			return nil
+		end
+
+		local dir = Vector2.new(pos.X - cx, pos.Y - cy)
+		if pos.Z <= 0 then
+			if dir.Magnitude < 0.01 then
+				dir = Vector2.new(0, 1)
+			end
+			dir = -dir.Unit
+		elseif dir.Magnitude < 0.01 then
+			dir = Vector2.new(0, -1)
+		else
+			dir = dir.Unit
+		end
+
+		local margin = 44
+		local maxX = cx - margin
+		local maxY = cy - margin
+		local t = math.huge
+		if dir.X > 0.001 then
+			t = math.min(t, maxX / dir.X)
+		elseif dir.X < -0.001 then
+			t = math.min(t, -maxX / dir.X)
+		end
+		if dir.Y > 0.001 then
+			t = math.min(t, maxY / dir.Y)
+		elseif dir.Y < -0.001 then
+			t = math.min(t, -maxY / dir.Y)
+		end
+		if t == math.huge then
+			t = maxX
+		end
+
+		local edge = Vector2.new(cx, cy) + dir * t
+		local angle = math.deg(math.atan2(dir.Y, dir.X)) + 90
+		return edge, angle
+	end
+
+	local function ensureArrow(key)
+		if arrowCache[key] then
+			return arrowCache[key]
+		end
+		local root = C("Frame", {
+			Size = UDim2.new(0, 30, 0, 36),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundTransparency = 1,
+			Visible = false,
+			Parent = Arrow_C,
+		})
+		local glyph = C("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 20),
+			BackgroundTransparency = 1,
+			Text = "▲",
+			Font = Enum.Font.GothamBlack,
+			TextSize = 16,
+			TextStrokeTransparency = 0.35,
+			TextColor3 = S.V,
+			Parent = root,
+		})
+		local distLbl = C("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 12),
+			Position = UDim2.new(0, 0, 0, 20),
+			BackgroundTransparency = 1,
+			Text = "",
+			Font = Enum.Font.GothamBold,
+			TextSize = 9,
+			TextColor3 = Color3.fromRGB(220, 220, 228),
+			Parent = root,
+		})
+		arrowCache[key] = { root = root, glyph = glyph, distLbl = distLbl }
+		return arrowCache[key]
+	end
+
+	local function hideArrow(key)
+		local ch = arrowCache[key]
+		if ch then
+			ch.root.Visible = false
+		end
+	end
+
+	local function renderOffscreen(key, worldPos, clr, dist, displayName)
+		local placement = getOffscreenPlacement(worldPos)
+		if not placement then
+			hideArrow(key)
+			return
+		end
+		local edge, angle = placement[1], placement[2]
+		local ch = ensureArrow(key)
+		ch.root.Position = UDim2.new(0, edge.X, 0, edge.Y)
+		ch.root.Rotation = angle
+		ch.glyph.TextColor3 = clr
+		ch.glyph.Rotation = 0
+		ch.distLbl.Text = math.floor(dist) .. "m"
+		ch.distLbl.TextColor3 = clr
+		ch.root.Visible = true
+	end
+
+	local function purgeArrow(key)
+		local ch = arrowCache[key]
+		if ch then
+			pcall(function() ch.root:Destroy() end)
+			arrowCache[key] = nil
+		end
+	end
+
 	RS.RenderStepped:Connect(function()
 		if lastESP and not S.ESP then
 			hideAllCaches()
@@ -474,10 +586,64 @@ function ESP.Init(S, ParentGUI, TF, Util)
 				end
 			end
 		end
+
+		Arrow_C.Visible = S.ESP and S.OffscreenArrows
+		if S.ESP and S.OffscreenArrows then
+			local arrowActive = {}
+			local function trackOffscreen(key, char, plr, isBot)
+				if shouldHidePlayer(plr, isBot) then
+					return
+				end
+				if not char or not Util.isValidTarget(char, plr) then
+					return
+				end
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				local hrp = Util.resolveBodyPart(char, "HumanoidRootPart")
+				if not hum or not hrp or hum.Health <= 0 then
+					return
+				end
+				local dist = (Cam.CFrame.Position - hrp.Position).Magnitude
+				if dist > S.MaxDist then
+					return
+				end
+				local placement = getOffscreenPlacement(hrp.Position)
+				if placement then
+					arrowActive[key] = true
+					local clr = GetColor(plr, char, isBot)
+					local label = isBot and ("[BOT] " .. char.Name) or (plr and plr.Name or char.Name)
+					renderOffscreen(key, hrp.Position, clr, dist, label)
+				else
+					hideArrow(key)
+				end
+			end
+
+			for _, plr in pairs(P:GetPlayers()) do
+				if plr ~= LP then
+					trackOffscreen(plr, plr.Character, plr, false)
+				end
+			end
+			if S.RenderBots then
+				for _, model in ipairs(botList) do
+					if model.Parent then
+						trackOffscreen(model, model, nil, true)
+					end
+				end
+			end
+			for key in pairs(arrowCache) do
+				if not arrowActive[key] then
+					hideArrow(key)
+				end
+			end
+		else
+			for key in pairs(arrowCache) do
+				hideArrow(key)
+			end
+		end
 	end)
 
 	P.PlayerRemoving:Connect(function(plr)
 		destroyCache(plr)
+		purgeArrow(plr)
 	end)
 end
 

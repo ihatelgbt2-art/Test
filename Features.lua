@@ -43,6 +43,8 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 		specRow = 21,
 		dmg = 20,
 		dmgRow = 21,
+		target = 22,
+		targetRow = 23,
 	}
 
 	local PANEL_BG = Color3.fromRGB(22, 22, 28)
@@ -425,7 +427,7 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 	local SpecEmpty = tagZ(C("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 32),
 		BackgroundTransparency = 1,
-		Text = "Nikt nie obserwuje",
+		Text = "Brak wykrytych obserwatorów",
 		Font = Enum.Font.GothamMedium,
 		TextSize = 11,
 		TextColor3 = Color3.fromRGB(160, 160, 175),
@@ -437,6 +439,189 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 
 	local specRows = {}
 	local avatarCache = {}
+
+	local DmgFolder = workspace:FindFirstChild("VG_DmgNums")
+	if not DmgFolder then
+		DmgFolder = Instance.new("Folder")
+		DmgFolder.Name = "VG_DmgNums"
+		DmgFolder.Parent = workspace
+	end
+
+	local TargetPanel = tagZ(C("Frame", {
+		Name = "TargetInfo",
+		Size = UDim2.new(0, 292, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 78),
+		BackgroundColor3 = PANEL_BG,
+		BackgroundTransparency = 0.06,
+		BorderSizePixel = 0,
+		Visible = false,
+		Parent = HudGui,
+	}), Z.target)
+	C("UICorner", { CornerRadius = UDim.new(0, 12), Parent = TargetPanel })
+	local TargetStroke = C("UIStroke", { Color = ACC, Thickness = 1.5, Transparency = 0.28, Parent = TargetPanel })
+	local TargetAccent = tagZ(C("Frame", {
+		Name = "TargetAccent",
+		Size = UDim2.new(1, 0, 0, 2),
+		BackgroundColor3 = ACC,
+		BorderSizePixel = 0,
+		Parent = TargetPanel,
+	}), Z.target + 1)
+	C("UICorner", { CornerRadius = UDim.new(0, 12), Parent = TargetAccent })
+
+	local TargetBody = C("Frame", {
+		Size = UDim2.new(1, -20, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Position = UDim2.new(0, 10, 0, 10),
+		BackgroundTransparency = 1,
+		Parent = TargetPanel,
+	})
+	C("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = TargetBody })
+	C("UIPadding", {
+		PaddingTop = UDim.new(0, 4),
+		PaddingBottom = UDim.new(0, 12),
+		Parent = TargetBody,
+	})
+
+	local TargetHeader = C("Frame", {
+		Size = UDim2.new(1, 0, 0, 42),
+		BackgroundTransparency = 1,
+		LayoutOrder = 1,
+		Parent = TargetBody,
+	})
+	local TargetAvWrap = tagZ(C("Frame", {
+		Size = UDim2.new(0, 38, 0, 38),
+		BackgroundColor3 = Color3.fromRGB(38, 38, 48),
+		BorderSizePixel = 0,
+		Parent = TargetHeader,
+	}), Z.targetRow)
+	C("UICorner", { CornerRadius = UDim.new(0, 8), Parent = TargetAvWrap })
+	C("UIStroke", { Color = ACC, Thickness = 1, Transparency = 0.45, Parent = TargetAvWrap })
+	local TargetAv = tagZ(C("ImageLabel", {
+		Size = UDim2.new(1, -4, 1, -4),
+		Position = UDim2.new(0, 2, 0, 2),
+		BackgroundTransparency = 1,
+		Image = "",
+		Parent = TargetAvWrap,
+	}), Z.targetRow + 1)
+	C("UICorner", { CornerRadius = UDim.new(0, 7), Parent = TargetAv })
+
+	local TargetName = tagZ(C("TextLabel", {
+		Size = UDim2.new(1, -96, 0, 16),
+		Position = UDim2.new(0, 48, 0, 4),
+		BackgroundTransparency = 1,
+		Text = "—",
+		Font = Enum.Font.GothamBlack,
+		TextSize = 13,
+		TextColor3 = Color3.fromRGB(245, 245, 250),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Parent = TargetHeader,
+	}), Z.targetRow + 1)
+	local TargetSub = tagZ(C("TextLabel", {
+		Size = UDim2.new(1, -96, 0, 12),
+		Position = UDim2.new(0, 48, 0, 22),
+		BackgroundTransparency = 1,
+		Text = "TARGET",
+		Font = Enum.Font.GothamMedium,
+		TextSize = 10,
+		TextColor3 = Color3.fromRGB(130, 130, 145),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = TargetHeader,
+	}), Z.targetRow + 1)
+	local TargetVisBadge = tagZ(C("TextLabel", {
+		Size = UDim2.new(0, 52, 0, 20),
+		Position = UDim2.new(1, -52, 0, 10),
+		BackgroundColor3 = Color3.fromRGB(34, 70, 48),
+		Text = "VISIBLE",
+		Font = Enum.Font.GothamBold,
+		TextSize = 9,
+		TextColor3 = Color3.fromRGB(120, 255, 170),
+		Parent = TargetHeader,
+	}), Z.targetRow + 1)
+	C("UICorner", { CornerRadius = UDim.new(0, 5), Parent = TargetVisBadge })
+
+	local TargetHpRow = C("Frame", {
+		Size = UDim2.new(1, 0, 0, 18),
+		BackgroundTransparency = 1,
+		LayoutOrder = 2,
+		Parent = TargetBody,
+	})
+	tagZ(C("TextLabel", {
+		Size = UDim2.new(0, 28, 1, 0),
+		BackgroundTransparency = 1,
+		Text = "HP",
+		Font = Enum.Font.GothamBold,
+		TextSize = 10,
+		TextColor3 = Color3.fromRGB(150, 150, 165),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = TargetHpRow,
+	}), Z.targetRow + 1)
+	local TargetHpTrack = tagZ(C("Frame", {
+		Size = UDim2.new(1, -96, 0, 8),
+		Position = UDim2.new(0, 34, 0.5, -4),
+		BackgroundColor3 = Color3.fromRGB(28, 28, 36),
+		BorderSizePixel = 0,
+		Parent = TargetHpRow,
+	}), Z.targetRow + 1)
+	C("UICorner", { CornerRadius = UDim.new(1, 0), Parent = TargetHpTrack })
+	local TargetHpFill = tagZ(C("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundColor3 = ACC,
+		BorderSizePixel = 0,
+		Parent = TargetHpTrack,
+	}), Z.targetRow + 2)
+	C("UICorner", { CornerRadius = UDim.new(1, 0), Parent = TargetHpFill })
+	local TargetHpText = tagZ(C("TextLabel", {
+		Size = UDim2.new(0, 54, 1, 0),
+		Position = UDim2.new(1, -54, 0, 0),
+		BackgroundTransparency = 1,
+		Text = "100",
+		Font = Enum.Font.GothamBold,
+		TextSize = 10,
+		TextColor3 = Color3.fromRGB(230, 230, 238),
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Parent = TargetHpRow,
+	}), Z.targetRow + 1)
+
+	local TargetStats = C("Frame", {
+		Size = UDim2.new(1, 0, 0, 34),
+		BackgroundColor3 = Color3.fromRGB(18, 18, 24),
+		BorderSizePixel = 0,
+		LayoutOrder = 3,
+		Parent = TargetBody,
+	})
+	C("UICorner", { CornerRadius = UDim.new(0, 8), Parent = TargetStats })
+	local function makeTargetStat(label, order, xScale)
+		tagZ(C("TextLabel", {
+			Size = UDim2.new(0.33, -8, 0, 12),
+			Position = UDim2.new(xScale, 8, 0, 6),
+			BackgroundTransparency = 1,
+			Text = label,
+			Font = Enum.Font.GothamMedium,
+			TextSize = 9,
+			TextColor3 = Color3.fromRGB(110, 110, 125),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = TargetStats,
+		}), Z.targetRow + 1)
+		return tagZ(C("TextLabel", {
+			Size = UDim2.new(0.33, -8, 0, 14),
+			Position = UDim2.new(xScale, 8, 0, 18),
+			BackgroundTransparency = 1,
+			Text = "—",
+			Font = Enum.Font.GothamBold,
+			TextSize = 11,
+			TextColor3 = Color3.fromRGB(235, 235, 242),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = TargetStats,
+		}), Z.targetRow + 1)
+	end
+	local TargetDistLbl = makeTargetStat("DISTANCE", 1, 0)
+	local TargetWpnLbl = makeTargetStat("WEAPON", 2, 0.33)
+	local TargetPartLbl = makeTargetStat("BONE", 3, 0.66)
+
+	local lastTargetUserId = nil
 
 	local function loadAvatar(img, userId)
 		if avatarCache[userId] then
@@ -456,6 +641,182 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 				img.Image = content
 			end
 		end)
+	end
+
+	local function getWeaponFromChar(char)
+		for _, item in ipairs(char:GetChildren()) do
+			if item:IsA("Tool") then
+				return item.Name
+			end
+		end
+		return "—"
+	end
+
+	local function isCharVisibleFromCam(char, part)
+		if not char or not part then
+			return false
+		end
+		local origin = Cam.CFrame.Position
+		local pos = part.Position
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = LP.Character and { LP.Character } or {}
+		local dir = pos - origin
+		local hit = workspace:Raycast(origin, dir, params)
+		if not hit then
+			return true
+		end
+		return hit.Instance:IsDescendantOf(char)
+	end
+
+	local function spawnDamageNumber(hum, dmg)
+		if not S.DamageNumbers or not hum or not hum.Parent then
+			return
+		end
+		local char = hum.Parent
+		local adornee = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+		if not adornee then
+			return
+		end
+
+		local host = Instance.new("Part")
+		host.Name = "VG_DmgHost"
+		host.Anchored = true
+		host.CanCollide = false
+		host.CanQuery = false
+		host.CanTouch = false
+		host.Transparency = 1
+		host.Size = Vector3.new(0.2, 0.2, 0.2)
+		host.CFrame = CFrame.new(adornee.Position + Vector3.new(math.random(-8, 8) / 10, 2.2, math.random(-8, 8) / 10))
+		host.Parent = DmgFolder
+
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.new(0, 120, 0, 44)
+		bb.StudsOffset = Vector3.new(0, 0, 0)
+		bb.AlwaysOnTop = true
+		bb.LightInfluence = 0
+		bb.Adornee = host
+		bb.Parent = host
+
+		local isHead = dmg >= 50
+		local col = isHead and Color3.fromRGB(255, 95, 95) or Color3.fromRGB(255, 255, 255)
+		local glow = isHead and Color3.fromRGB(255, 60, 60) or ACC
+
+		local card = Instance.new("Frame")
+		card.Size = UDim2.new(1, 0, 1, 0)
+		card.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+		card.BackgroundTransparency = 0.15
+		card.BorderSizePixel = 0
+		card.Parent = bb
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = card
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = glow
+		stroke.Thickness = 1.5
+		stroke.Transparency = 0.2
+		stroke.Parent = card
+
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(1, 0, 1, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.Text = "-" .. tostring(math.floor(dmg + 0.5))
+		lbl.Font = Enum.Font.GothamBlack
+		lbl.TextSize = isHead and 22 or 18
+		lbl.TextColor3 = col
+		lbl.TextStrokeTransparency = 0.55
+		lbl.Parent = card
+
+		if isHead then
+			local tag = Instance.new("TextLabel")
+			tag.Size = UDim2.new(1, 0, 0, 10)
+			tag.Position = UDim2.new(0, 0, 1, -11)
+			tag.BackgroundTransparency = 1
+			tag.Text = "HEAD"
+			tag.Font = Enum.Font.GothamBold
+			tag.TextSize = 8
+			tag.TextColor3 = Color3.fromRGB(255, 130, 130)
+			tag.Parent = card
+		end
+
+		card.Size = UDim2.new(0.6, 0, 0.6, 0)
+		Tween(card, TweenInfo.new(0.08, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 1, 0),
+		})
+
+		local rise = 2.8
+		local life = 0.85
+		task.spawn(function()
+			local t0 = tick()
+			while host.Parent and tick() - t0 < life do
+				local dt = task.wait(0.03)
+				local a = (tick() - t0) / life
+				host.CFrame = host.CFrame + Vector3.new(0, rise * dt, 0)
+				card.BackgroundTransparency = 0.15 + a * 0.75
+				lbl.TextTransparency = a * 0.95
+				stroke.Transparency = 0.2 + a * 0.75
+			end
+			pcall(function() host:Destroy() end)
+		end)
+	end
+
+	local function updTargetInfo()
+		if not S.TargetInfo or S.MenuOpen then
+			TargetPanel.Visible = false
+			return
+		end
+
+		local tgt = S.GetAimTarget and S.GetAimTarget()
+		if not tgt or not tgt.char or not tgt.part then
+			TargetPanel.Visible = false
+			lastTargetUserId = nil
+			return
+		end
+
+		local char = tgt.char
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if not hum or hum.Health <= 0 or not hrp then
+			TargetPanel.Visible = false
+			return
+		end
+
+		TargetPanel.Visible = true
+		local hpRatio = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+		TargetHpFill.Size = UDim2.new(hpRatio, 0, 1, 0)
+		TargetHpFill.BackgroundColor3 = Color3.fromRGB(255, 70, 70):Lerp(Color3.fromRGB(80, 255, 130), hpRatio)
+		TargetHpText.Text = string.format("%d / %d", math.floor(hum.Health), math.floor(hum.MaxHealth))
+
+		local dist = (Cam.CFrame.Position - hrp.Position).Magnitude
+		TargetDistLbl.Text = math.floor(dist) .. "m"
+		TargetWpnLbl.Text = getWeaponFromChar(char)
+		TargetPartLbl.Text = string.upper(tgt.part.Name)
+
+		local visible = isCharVisibleFromCam(char, tgt.part)
+		if visible then
+			TargetVisBadge.Text = "VISIBLE"
+			TargetVisBadge.BackgroundColor3 = Color3.fromRGB(34, 70, 48)
+			TargetVisBadge.TextColor3 = Color3.fromRGB(120, 255, 170)
+		else
+			TargetVisBadge.Text = "HIDDEN"
+			TargetVisBadge.BackgroundColor3 = Color3.fromRGB(70, 34, 34)
+			TargetVisBadge.TextColor3 = Color3.fromRGB(255, 140, 140)
+		end
+
+		local displayName = tgt.plr and (tgt.plr.DisplayName ~= tgt.plr.Name and tgt.plr.DisplayName or tgt.plr.Name) or char.Name
+		local userName = tgt.plr and tgt.plr.Name or char.Name
+		TargetName.Text = displayName
+		TargetSub.Text = tgt.plr and ("@" .. userName) or "BOT / NPC"
+
+		if tgt.plr and tgt.plr.UserId ~= lastTargetUserId then
+			lastTargetUserId = tgt.plr.UserId
+			loadAvatar(TargetAv, tgt.plr.UserId)
+		elseif not tgt.plr then
+			lastTargetUserId = nil
+			TargetAv.Image = ""
+		end
+
+		TargetStroke.Color = visible and ACC or Color3.fromRGB(255, 100, 100)
 	end
 
 	local function createSpecRow(plr, order)
@@ -506,7 +867,7 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 			Size = UDim2.new(1, -52, 0, 12),
 			Position = UDim2.new(0, 48, 0, 25),
 			BackgroundTransparency = 1,
-			Text = "Obserwuje",
+			Text = "Obserwuje Ciebie",
 			Font = Enum.Font.GothamMedium,
 			TextSize = 10,
 			TextColor3 = ACC,
@@ -1119,6 +1480,9 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 			flashHitmarker(dmg)
 		end
 		pcall(playHitSound, false)
+		if S.DamageNumbers then
+			pcall(spawnDamageNumber, hum, dmg)
+		end
 		if S.DamageLog then
 			pcall(addDmgLog, plrName or "Target", dmg, false)
 		end
@@ -1230,7 +1594,7 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 		end
 		local last = hum.Health
 		humWatch[hum] = hum.HealthChanged:Connect(function(hp)
-			local trackHit = S.Hitmarker or S.HitSound or S.DamageLog or S.SessionStats or S.KillFeed
+			local trackHit = S.Hitmarker or S.HitSound or S.DamageLog or S.DamageNumbers or S.SessionStats or S.KillFeed
 				or S.HitEffects or S.KillEffects
 			if not trackHit then
 				last = hp
@@ -1326,21 +1690,100 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 		end
 	end)
 
-	local function isLikelySpectating(plr)
+	local function getLocalSpectateSubjects()
+		local subjects = {}
+		local myChar = LP.Character
+		if not myChar then
+			return subjects
+		end
+		local hum = myChar:FindFirstChildOfClass("Humanoid")
+		if hum then
+			subjects[hum] = true
+		end
+		for _, inst in ipairs(myChar:GetDescendants()) do
+			if inst:IsA("BasePart") then
+				subjects[inst] = true
+			end
+		end
+		return subjects
+	end
+
+	local function attributePointsToLocal(value)
+		if value == nil then
+			return false
+		end
+		if value == LP or value == LP.Character then
+			return true
+		end
+		if typeof(value) == "number" and value == LP.UserId then
+			return true
+		end
+		if typeof(value) == "string" then
+			local lower = string.lower(value)
+			if lower == string.lower(LP.Name) or lower == string.lower(LP.DisplayName) then
+				return true
+			end
+			local num = tonumber(value)
+			if num and num == LP.UserId then
+				return true
+			end
+		end
+		if typeof(value) == "Instance" and LP.Character and value:IsDescendantOf(LP.Character) then
+			return true
+		end
+		return false
+	end
+
+	local function isSpectatingLocalPlayer(plr)
 		if plr == LP then
 			return false
 		end
-		if plr:GetAttribute("Spectating") == true then
-			return true
+
+		local attrNames = {
+			"SpectatingUserId",
+			"SpectateTarget",
+			"Spectating",
+			"ObserveTarget",
+			"CameraTarget",
+			"WatchUserId",
+			"TargetUserId",
+			"SpectateUserId",
+			"ViewTarget",
+		}
+		for _, attr in ipairs(attrNames) do
+			if attributePointsToLocal(plr:GetAttribute(attr)) then
+				return true
+			end
 		end
-		local char = plr.Character
-		if not char then
-			return true
+
+		for _, child in ipairs(plr:GetChildren()) do
+			if child:IsA("ObjectValue") and attributePointsToLocal(child.Value) then
+				return true
+			end
+			if child:IsA("IntValue") and child.Value == LP.UserId then
+				return true
+			end
+			if child:IsA("StringValue") and attributePointsToLocal(child.Value) then
+				return true
+			end
 		end
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum and hum.Health <= 0 then
-			return true
+
+		if typeof(gethiddenproperty) == "function" then
+			local ok, camera = pcall(gethiddenproperty, plr, "Camera")
+			if ok and typeof(camera) == "Instance" and camera:IsA("Camera") then
+				local subject = camera.CameraSubject
+				if subject then
+					local subjects = getLocalSpectateSubjects()
+					if subjects[subject] then
+						return true
+					end
+					if LP.Character and subject:IsDescendantOf(LP.Character) then
+						return true
+					end
+				end
+			end
 		end
+
 		return false
 	end
 
@@ -1363,7 +1806,7 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 		local current = {}
 		local order = 1
 		for _, plr in ipairs(Players:GetPlayers()) do
-			if isLikelySpectating(plr) then
+			if isSpectatingLocalPlayer(plr) then
 				current[plr.UserId] = { plr = plr, order = order }
 				order = order + 1
 			end
@@ -1433,6 +1876,7 @@ function Features.Init(S, _ParentGUI, AntiBypassModule)
 		updWatermark()
 		updKeybindList()
 		updSessionStats()
+		updTargetInfo()
 		local shotAt = tonumber(S.LastShotAt) or 0
 		if shotAt > 0 and shotAt > lastShotTrack then
 			lastShotTrack = shotAt

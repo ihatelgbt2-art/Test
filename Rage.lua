@@ -566,6 +566,13 @@ function Rage.Init(S, ParentGUI, TF, Util)
 	LP.CharacterAdded:Connect(function()
 		aaActive = false
 	end)
+
+	S.GetRageTarget = function()
+		if not S.MasterRage or not S.RageBot then
+			return nil
+		end
+		return getStableRageTarget()
+	end
 end
 
 return Rage

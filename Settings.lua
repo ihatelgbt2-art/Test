@@ -1,7 +1,7 @@
 -- Plik: workspace/Vanguard/Settings.lua
 
 local Settings = {
-	Version = "2.17.0",
+	Version = "2.18.0",
 	-- ESP
 	ESP = false,
 	Box = false,
@@ -15,6 +15,7 @@ local Settings = {
 	Trace = false,
 	Chams = false,
 	ChamsRainbow = false,
+	OffscreenArrows = false,
 	RenderBots = false,
 	Team = false,
 	ExcludeTeam = true,
@@ -88,6 +89,8 @@ local Settings = {
 	Spectators = false,
 	Hitmarker = false,
 	DamageLog = false,
+	DamageNumbers = false,
+	TargetInfo = false,
 	Watermark = false,
 	KeybindList = false,
 	SessionStats = false,
